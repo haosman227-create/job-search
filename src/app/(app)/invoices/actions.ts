@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { runExtractionForInvoice } from "@/lib/extraction/runner";
 import { requireBusinessContext } from "@/lib/data/business";
 import {
   INVOICES_BUCKET,
@@ -51,6 +53,17 @@ export async function uploadInvoice(formData: FormData): Promise<void> {
     redirect(
       "/invoices/upload?error=" +
         encodeURIComponent(result.error ?? "Upload failed."),
+    );
+  }
+
+  // Extraction can take tens of seconds (SPEC §5.2): run it after the
+  // response is sent; the detail page polls the invoice status meanwhile.
+  const invoiceId = result.invoiceId;
+  if (invoiceId) {
+    after(() =>
+      runExtractionForInvoice(invoiceId).catch((error) => {
+        console.error(`extraction failed for invoice ${invoiceId}`, error);
+      }),
     );
   }
 
