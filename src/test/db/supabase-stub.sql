@@ -6,7 +6,8 @@ create schema if not exists auth;
 
 create table if not exists auth.users (
   id uuid primary key,
-  email text
+  email text,
+  raw_user_meta_data jsonb not null default '{}'::jsonb
 );
 
 -- Supabase resolves auth.uid() from the request JWT; the stub reads the same
