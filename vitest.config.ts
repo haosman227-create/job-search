@@ -12,6 +12,8 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*.test.{ts,tsx}"],
+    // DB integration tests run separately via vitest.db.config.ts (test:db).
+    exclude: ["src/test/db/**"],
     environment: "node",
   },
 });
