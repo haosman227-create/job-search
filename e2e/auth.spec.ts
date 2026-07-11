@@ -7,6 +7,9 @@ test("unauthenticated visitors are redirected to login", async ({ page }) => {
 
   await page.goto("/invoices");
   await expect(page).toHaveURL(/\/login$/);
+
+  await page.goto("/invoices/upload");
+  await expect(page).toHaveURL(/\/login$/);
 });
 
 test("login and signup pages render and link to each other", async ({
