@@ -5,6 +5,7 @@ import { formatCents } from "@/lib/domain";
 import { INVOICES_BUCKET } from "@/lib/invoices/upload";
 import type { InvoiceRow, VendorRow } from "@/lib/types";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
+import { InvoiceStatusPoller } from "@/components/invoice-status-poller";
 
 export default async function InvoiceDetailPage({
   params,
@@ -38,6 +39,7 @@ export default async function InvoiceDetailPage({
 
   return (
     <div className="flex flex-col gap-6">
+      <InvoiceStatusPoller invoiceId={invoice.id} status={invoice.status} />
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">
           {invoice.vendor?.name ?? "Invoice"}
