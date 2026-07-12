@@ -36,3 +36,19 @@ export interface InvoiceListItem extends InvoiceRow {
   vendor: Pick<VendorRow, "name"> | null;
   line_count: number;
 }
+
+export interface InvoiceLineRow {
+  id: string;
+  business_id: string;
+  invoice_id: string;
+  product_id: string | null;
+  raw_text: string | null;
+  barcode: string | null;
+  name: string | null;
+  quantity: number | null;
+  unit_cost_cents: number | null;
+  line_total_cents: number | null;
+  confidence: Record<string, number>;
+  illegible: boolean;
+  created_at: string;
+}
