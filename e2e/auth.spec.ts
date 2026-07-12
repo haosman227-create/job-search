@@ -10,6 +10,10 @@ test("unauthenticated visitors are redirected to login", async ({ page }) => {
 
   await page.goto("/invoices/upload");
   await expect(page).toHaveURL(/\/login$/);
+
+  // Deep links, including the review/detail route, are gated too.
+  await page.goto("/invoices/11111111-1111-4111-8111-111111111111");
+  await expect(page).toHaveURL(/\/login$/);
 });
 
 test("login and signup pages render and link to each other", async ({
