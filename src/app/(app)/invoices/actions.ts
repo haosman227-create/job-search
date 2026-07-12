@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { runExtractionForInvoice } from "@/lib/extraction/runner";
+import { confirmInvoice, type ConfirmResult } from "@/lib/catalog/confirm";
+import { confirmInvoiceSchema } from "@/lib/catalog/confirm-schema";
+import { createConfirmDeps } from "@/lib/catalog/supabase-deps";
 import { requireBusinessContext } from "@/lib/data/business";
 import {
   INVOICES_BUCKET,
@@ -69,4 +72,28 @@ export async function uploadInvoice(formData: FormData): Promise<void> {
 
   revalidatePath("/invoices");
   redirect(`/invoices/${result.invoiceId}`);
+}
+
+/**
+ * Confirm reviewed lines into the catalog (SPEC §3 steps 3-4). Returns the
+ * duplicate warning instead of throwing so the review UI (Phase 7) can show
+ * the explicit-override dialog.
+ */
+export async function confirmInvoiceAction(
+  payload: unknown,
+): Promise<ConfirmResult> {
+  const parsed = confirmInvoiceSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { outcome: "invalid", message: parsed.error.issues[0].message };
+  }
+
+  const { supabase } = await requireBusinessContext();
+  const result = await confirmInvoice(createConfirmDeps(supabase), parsed.data);
+
+  if (result.outcome === "confirmed") {
+    revalidatePath("/invoices");
+    revalidatePath(`/invoices/${parsed.data.invoiceId}`);
+    revalidatePath("/");
+  }
+  return result;
 }
