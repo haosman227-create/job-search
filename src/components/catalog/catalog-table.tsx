@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { SalePriceCell } from "./sale-price-cell";
 import { DepartmentCell } from "./department-cell";
+import { MarketPriceCell } from "./market-price-cell";
 
 const SORTABLE: Record<string, SortColumn> = {
   barcode: "barcode",
@@ -128,13 +129,7 @@ export function CatalogTable({
       {
         id: "market",
         header: "Market (AI)",
-        cell: ({ row }) => (
-          <span className="tabular-nums text-muted-foreground" title="AI estimate">
-            {row.original.marketPriceCents != null
-              ? formatCents(row.original.marketPriceCents)
-              : "—"}
-          </span>
-        ),
+        cell: ({ row }) => <MarketPriceCell row={row.original} />,
       },
       {
         id: "sale",
