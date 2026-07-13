@@ -20,6 +20,7 @@ export interface InvoiceRow {
   file_paths: string[];
   extraction_model: string | null;
   extraction_confidence: number | null;
+  header_confidence: Record<string, number>;
   created_at: string;
   updated_at: string;
 }
