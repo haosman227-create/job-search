@@ -8,6 +8,8 @@ import {
   computeOverrideUpdate,
 } from "@/lib/catalog/price-update";
 import { refreshMarketPriceForProduct } from "@/lib/market/refresh";
+import { attachBarcode, type BarcodeAttachResult } from "@/lib/catalog/merge";
+import { createBarcodeAttachDeps } from "@/lib/catalog/merge-deps";
 
 const setOverrideSchema = z.object({
   productId: z.uuid(),
@@ -21,6 +23,11 @@ const setDepartmentSchema = z.object({
 });
 
 const refreshMarketSchema = z.object({ productId: z.uuid() });
+
+const attachBarcodeSchema = z.object({
+  productId: z.uuid(),
+  barcode: z.string().trim().min(1),
+});
 
 export type CatalogActionResult =
   | { ok: true }
@@ -145,4 +152,24 @@ export async function refreshMarketPrice(
   });
   revalidatePath("/");
   return { ok: true };
+}
+
+/**
+ * Attach a barcode to a barcode-less product (SPEC §7.2). If the same barcode
+ * already exists on another product (the item was created both ways), the two
+ * are merged into one with the combined cost history.
+ */
+export async function attachProductBarcode(
+  input: unknown,
+): Promise<BarcodeAttachResult> {
+  const parsed = attachBarcodeSchema.safeParse(input);
+  if (!parsed.success) {
+    return { outcome: "invalid", message: parsed.error.issues[0].message };
+  }
+  const { supabase } = await requireBusinessContext();
+  const result = await attachBarcode(createBarcodeAttachDeps(supabase), parsed.data);
+  if (result.outcome !== "invalid") {
+    revalidatePath("/");
+  }
+  return result;
 }
