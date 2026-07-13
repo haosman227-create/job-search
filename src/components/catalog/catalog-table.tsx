@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { SalePriceCell } from "./sale-price-cell";
 import { DepartmentCell } from "./department-cell";
 import { MarketPriceCell } from "./market-price-cell";
+import { BarcodeCell } from "./barcode-cell";
 
 const SORTABLE: Record<string, SortColumn> = {
   barcode: "barcode",
@@ -83,11 +84,7 @@ export function CatalogTable({
       {
         id: "barcode",
         header: "Barcode",
-        cell: ({ row }) => (
-          <span className="tabular-nums text-muted-foreground">
-            {row.original.barcode ?? "—"}
-          </span>
-        ),
+        cell: ({ row }) => <BarcodeCell row={row.original} />,
       },
       {
         id: "name",
