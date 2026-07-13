@@ -62,6 +62,13 @@ describe("runExtractionJob", () => {
         status: "needs_review",
         extraction_model: MODEL,
         extraction_confidence: 0.97,
+        // Per-field header confidence persisted for the review screen.
+        header_confidence: {
+          vendor_name: 0.99,
+          invoice_number: 0.98,
+          invoice_date: 0.97,
+          total_cents: 0.99,
+        },
       }),
     );
   });

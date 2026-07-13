@@ -30,6 +30,9 @@ export interface ExtractedInvoiceUpdate {
   status: "needs_review" | "partial";
   extraction_model: string;
   extraction_confidence: number;
+  // Per-field header confidence (vendor_name, invoice_number, invoice_date,
+  // total_cents), for the review screen's low-confidence highlighting.
+  header_confidence: Record<string, number>;
 }
 
 export interface LineInsert {
@@ -161,5 +164,6 @@ async function writeExtractedInvoice(
     status: extracted.lines.some((l) => l.illegible) ? "partial" : "needs_review",
     extraction_model: extractionModel,
     extraction_confidence: extracted.overall_confidence,
+    header_confidence: extracted.confidence,
   });
 }

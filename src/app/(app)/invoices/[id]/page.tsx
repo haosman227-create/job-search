@@ -89,7 +89,7 @@ export default async function InvoiceDetailPage({
                 invoice_number: invoice.invoice_number ?? "",
                 invoice_date: invoice.invoice_date ?? "",
                 total_cents: invoice.total_cents,
-                confidence: {},
+                confidence: invoice.header_confidence ?? {},
               }}
               lines={lines}
               confirmAction={confirmInvoiceAction}
