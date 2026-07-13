@@ -7,6 +7,7 @@ import {
   computeDepartmentUpdate,
   computeOverrideUpdate,
 } from "@/lib/catalog/price-update";
+import { refreshMarketPriceForProduct } from "@/lib/market/refresh";
 
 const setOverrideSchema = z.object({
   productId: z.uuid(),
@@ -18,6 +19,8 @@ const setDepartmentSchema = z.object({
   productId: z.uuid(),
   departmentId: z.uuid().nullable(),
 });
+
+const refreshMarketSchema = z.object({ productId: z.uuid() });
 
 export type CatalogActionResult =
   | { ok: true }
@@ -121,6 +124,25 @@ export async function setProductDepartment(
     .update({ ...update, updated_at: new Date().toISOString() })
     .eq("id", productId);
   if (error) return { ok: false, message: error.message };
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/**
+ * Manually refresh a product's AI market-price estimate (SPEC §4). A manual
+ * request always re-estimates, regardless of the cost-change policy.
+ */
+export async function refreshMarketPrice(
+  input: unknown,
+): Promise<CatalogActionResult> {
+  const parsed = refreshMarketSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0].message };
+  }
+  const { supabase } = await requireBusinessContext();
+  await refreshMarketPriceForProduct(supabase, parsed.data.productId, {
+    manual: true,
+  });
   revalidatePath("/");
   return { ok: true };
 }

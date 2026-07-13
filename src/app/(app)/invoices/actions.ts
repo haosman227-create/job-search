@@ -7,6 +7,7 @@ import { runExtractionForInvoice } from "@/lib/extraction/runner";
 import { confirmInvoice, type ConfirmResult } from "@/lib/catalog/confirm";
 import { confirmInvoiceSchema } from "@/lib/catalog/confirm-schema";
 import { createConfirmDeps } from "@/lib/catalog/supabase-deps";
+import { refreshMarketPricesForProducts } from "@/lib/market/refresh";
 import { requireBusinessContext } from "@/lib/data/business";
 import {
   INVOICES_BUCKET,
@@ -91,6 +92,15 @@ export async function confirmInvoiceAction(
   const result = await confirmInvoice(createConfirmDeps(supabase), parsed.data);
 
   if (result.outcome === "confirmed") {
+    // Market estimates for new / materially-changed products, in the
+    // background so confirm stays fast (the refresh policy skips the rest).
+    if (result.productIds.length > 0) {
+      after(() =>
+        refreshMarketPricesForProducts(supabase, result.productIds).catch(
+          (error) => console.error("market refresh after confirm failed", error),
+        ),
+      );
+    }
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${parsed.data.invoiceId}`);
     revalidatePath("/");
