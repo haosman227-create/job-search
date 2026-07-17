@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-
-const PUBLIC_PATHS = ["/login", "/signup"];
+import { isAuthPath, isPublicPath } from "@/lib/auth/public-paths";
 
 /**
  * Refreshes the Supabase session cookie on every request (server components
@@ -40,18 +39,16 @@ export default async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
 
-  const isPublic = PUBLIC_PATHS.some((p) =>
-    request.nextUrl.pathname.startsWith(p),
-  );
+  const path = request.nextUrl.pathname;
 
-  if (!user && !isPublic) {
+  if (!user && !isPublicPath(path)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
     return NextResponse.redirect(url);
   }
 
-  if (user && isPublic) {
+  if (user && isAuthPath(path)) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";
