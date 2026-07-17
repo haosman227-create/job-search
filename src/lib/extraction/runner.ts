@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { INVOICES_BUCKET } from "@/lib/invoices/upload";
+import { recordUsage } from "@/lib/usage/record";
 import { EXTRACTION_MODEL, extractWithClaude } from "./client";
 import {
   runExtractionJob,
@@ -47,6 +48,18 @@ export async function runExtractionForInvoice(
       };
     },
     extract: extractWithClaude,
+    async recordUsage(record) {
+      await recordUsage({
+        businessId: record.businessId,
+        userId: record.userId,
+        operation: "extraction",
+        usage: record.usage,
+        invoiceId: record.invoiceId,
+        invoices: record.invoices,
+        lineItems: record.lineItems,
+        storageBytes: record.storageBytes,
+      });
+    },
     async upsertVendor(businessId, name, normalizedName) {
       const { data, error } = await supabase
         .from("vendor")

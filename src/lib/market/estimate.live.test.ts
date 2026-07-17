@@ -15,15 +15,15 @@ describe.skipIf(!enabled)("estimateMarketPrice (live)", () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY ??= "unused";
     const { estimateMarketPrice } = await import("./client");
 
-    const cents = await estimateMarketPrice({
+    const { priceCents } = await estimateMarketPrice({
       name: "Coca-Cola 330ml can",
       barcode: "5449000000996",
       departmentName: "Beverages",
     });
 
-    expect(cents).not.toBeNull();
+    expect(priceCents).not.toBeNull();
     // A single can retails roughly $0.50–$5.00; assert a sane range.
-    expect(cents!).toBeGreaterThan(30);
-    expect(cents!).toBeLessThan(1000);
+    expect(priceCents!).toBeGreaterThan(30);
+    expect(priceCents!).toBeLessThan(1000);
   }, 60_000);
 });

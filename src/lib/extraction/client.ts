@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { getServerEnv } from "@/lib/env";
+import type { ClaudeUsage } from "@/lib/usage/cost";
 import {
   extractionResultSchema,
   type ExtractionFile,
@@ -10,6 +11,11 @@ import {
 
 // SPEC §8 pins extraction to claude-sonnet-5.
 export const EXTRACTION_MODEL = "claude-sonnet-5";
+
+export interface ExtractionCall {
+  result: ExtractionResult;
+  usage: ClaudeUsage;
+}
 
 const PROMPT = `Extract every invoice in the attached file(s) into the required JSON shape.
 
@@ -52,7 +58,7 @@ function toContentBlock(file: ExtractionFile): Anthropic.ContentBlockParam {
  */
 export async function extractWithClaude(
   files: ExtractionFile[],
-): Promise<ExtractionResult> {
+): Promise<ExtractionCall> {
   const client = new Anthropic({ apiKey: getServerEnv().ANTHROPIC_API_KEY });
 
   const response = await client.messages.parse({
@@ -78,5 +84,12 @@ export async function extractWithClaude(
       `Extraction returned no parseable output (stop_reason: ${response.stop_reason})`,
     );
   }
-  return response.parsed_output;
+  return {
+    result: response.parsed_output,
+    usage: {
+      model: EXTRACTION_MODEL,
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    },
+  };
 }

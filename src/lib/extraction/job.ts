@@ -1,9 +1,7 @@
 import { normalizeVendorName } from "@/lib/domain";
-import type {
-  ExtractedInvoice,
-  ExtractionFile,
-  ExtractionResult,
-} from "./schema";
+import type { ClaudeUsage } from "@/lib/usage/cost";
+import type { ExtractedInvoice, ExtractionFile } from "./schema";
+import type { ExtractionCall } from "./client";
 
 /**
  * The extraction background job (SPEC §3 step 2, §8): runs after upload,
@@ -48,10 +46,27 @@ export interface LineInsert {
   illegible: boolean;
 }
 
+/** Write-path metering record for one extraction call (SPEC-SAAS §9.2). */
+export interface ExtractionUsageRecord {
+  businessId: string;
+  userId: string | null;
+  usage: ClaudeUsage;
+  invoiceId: string;
+  invoices: number;
+  lineItems: number;
+  storageBytes: number;
+}
+
 export interface ExtractionJobDeps {
   loadInvoice(invoiceId: string): Promise<InvoiceRecord | null>;
   downloadFile(path: string): Promise<ExtractionFile>;
-  extract(files: ExtractionFile[]): Promise<ExtractionResult>;
+  extract(files: ExtractionFile[]): Promise<ExtractionCall>;
+  /**
+   * Meter the extraction call. Called immediately after a successful extract,
+   * before any invoice is written — no Claude call is left unmetered, and a
+   * metering failure fails the job rather than silently losing the event.
+   */
+  recordUsage(record: ExtractionUsageRecord): Promise<void>;
   /** Find-or-create by normalized name within the business; returns vendor id. */
   upsertVendor(
     businessId: string,
@@ -94,7 +109,23 @@ export async function runExtractionJob(
     const files = await Promise.all(
       invoice.file_paths.map((path) => deps.downloadFile(path)),
     );
-    const result = await deps.extract(files);
+    const { result, usage } = await deps.extract(files);
+
+    // Write-path metering: one usage event per Claude call, recorded before any
+    // invoice row is written. A failure here throws into the catch below and
+    // fails the invoice — an unmetered extraction never persists as success.
+    await deps.recordUsage({
+      businessId: invoice.business_id,
+      userId: invoice.uploaded_by,
+      usage,
+      invoiceId: invoice.id,
+      invoices: result.invoices.length,
+      lineItems: result.invoices.reduce((n, inv) => n + inv.lines.length, 0),
+      storageBytes: files.reduce(
+        (n, f) => n + Buffer.byteLength(f.base64, "base64"),
+        0,
+      ),
+    });
 
     const invoiceIds: string[] = [];
     for (const [index, extracted] of result.invoices.entries()) {
