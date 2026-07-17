@@ -61,6 +61,15 @@ before the paid work starts.
 | `GET /api/v1/usage` | Plan + this month's usage: `{ usage: { plan, subscriptionStatus, trialEndsAt, period, invoices: { used, limit, remaining }, marketRefreshes: {...} } }` |
 | `GET /api/v1/onboarding` | First-run checklist + trial status: `{ onboarding, trial }` |
 
+### Account & data rights
+| Method & path | Purpose |
+|---|---|
+| `GET /api/v1/account` | Data-rights status: `{ deletion: { pending, daysRemaining, … }, imageRetentionDays }` |
+| `GET /api/v1/account/export` | Full-tenant data export as a downloadable JSON bundle (business, departments, vendors, products, invoices, lines, audit) |
+| `POST /api/v1/account/deletion` | Request account deletion — starts a 30-day grace period → `{ deletion }` |
+| `DELETE /api/v1/account/deletion` | Cancel a pending deletion within the grace period |
+| `PATCH /api/v1/account/retention` | `{ retentionDays: int>0 \| null }` — invoice-image retention window (null = keep until deletion) |
+
 ### Billing
 | Method & path | Purpose |
 |---|---|

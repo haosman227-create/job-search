@@ -4,17 +4,20 @@ import {
   listDepartments,
 } from "@/lib/api/services/settings";
 import { getBillingView } from "@/lib/api/services/billing";
+import { getDataRights } from "@/lib/api/services/account";
 import { DepartmentsEditor } from "@/components/settings/departments-editor";
 import { BusinessProfileForm } from "@/components/settings/business-profile-form";
 import { InviteForm } from "@/components/settings/invite-form";
 import { BillingSection } from "@/components/settings/billing-section";
+import { DataPrivacySection } from "@/components/settings/data-privacy-section";
 
 export default async function SettingsPage() {
   const ctx = await requireBusinessContext();
-  const [business, departmentRows, billing] = await Promise.all([
+  const [business, departmentRows, billing, dataRights] = await Promise.all([
     getBusinessProfile(ctx),
     listDepartments(ctx),
     getBillingView(ctx),
+    getDataRights(ctx),
   ]);
 
   return (
@@ -60,6 +63,17 @@ export default async function SettingsPage() {
           </p>
         </div>
         <BillingSection view={billing} />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="font-medium">Data &amp; privacy</h2>
+          <p className="text-sm text-muted-foreground">
+            Export or delete your data, and control how long invoice images are
+            kept.
+          </p>
+        </div>
+        <DataPrivacySection initial={dataRights} />
       </section>
     </div>
   );

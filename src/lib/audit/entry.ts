@@ -17,7 +17,11 @@ export type AuditAction =
   | "business.profile_updated"
   | "member.invited"
   | "billing.plan_changed"
-  | "billing.subscription_canceled";
+  | "billing.subscription_canceled"
+  | "account.exported"
+  | "account.deletion_requested"
+  | "account.deletion_canceled"
+  | "account.retention_changed";
 
 export interface AuditInput {
   businessId: string;
@@ -74,6 +78,16 @@ export function describeAudit(
       return `Plan changed to ${str(metadata.planId) ?? "a new plan"}`;
     case "billing.subscription_canceled":
       return "Subscription canceled — reverted to the free plan";
+    case "account.exported":
+      return "Exported all account data";
+    case "account.deletion_requested":
+      return "Requested account deletion";
+    case "account.deletion_canceled":
+      return "Canceled the pending account deletion";
+    case "account.retention_changed":
+      return metadata.retentionDays
+        ? `Set invoice-image retention to ${str(metadata.retentionDays)} days`
+        : "Set invoice images to be kept until deletion";
   }
 }
 
