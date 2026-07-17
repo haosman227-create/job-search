@@ -10,6 +10,11 @@ import { confirmInvoice, type ConfirmResult } from "@/lib/catalog/confirm";
 import { confirmInvoiceSchema } from "@/lib/catalog/confirm-schema";
 import { createConfirmDeps } from "@/lib/catalog/supabase-deps";
 import { refreshMarketPricesForProducts } from "@/lib/market/refresh";
+import { assertClaudeGuardrail } from "@/lib/guardrails/enforce";
+import {
+  assertWithinRateLimit,
+  UPLOAD_RATE_LIMIT,
+} from "@/lib/guardrails/rate-limit";
 import type { InvoiceLineRow, InvoiceListItem, InvoiceRow, VendorRow } from "@/lib/types";
 import type { ApiContext } from "../context";
 import { ApiError } from "../errors";
@@ -101,6 +106,12 @@ export async function uploadInvoice(
   ctx: ApiContext,
   file: File,
 ): Promise<{ invoiceId: string }> {
+  // Spend guardrails BEFORE any storage write or Claude call (SPEC-SAAS §9.3):
+  // rate limit first, then plan quota / trial / global kill switch. An
+  // over-quota upload is rejected up front, never silently half-processed.
+  await assertWithinRateLimit(ctx.businessId, UPLOAD_RATE_LIMIT);
+  await assertClaudeGuardrail(ctx, "extraction");
+
   const client: InvoiceUploadClient = {
     async createInvoice(business_id, uploaded_by) {
       const { data, error } = await ctx.supabase

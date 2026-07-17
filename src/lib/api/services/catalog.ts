@@ -7,6 +7,11 @@ import {
 import { attachBarcode, type BarcodeAttachResult } from "@/lib/catalog/merge";
 import { createBarcodeAttachDeps } from "@/lib/catalog/merge-deps";
 import { refreshMarketPriceForProduct } from "@/lib/market/refresh";
+import { assertClaudeGuardrail } from "@/lib/guardrails/enforce";
+import {
+  assertWithinRateLimit,
+  MARKET_REFRESH_RATE_LIMIT,
+} from "@/lib/guardrails/rate-limit";
 import type { ApiContext } from "../context";
 import { ApiError } from "../errors";
 
@@ -208,5 +213,8 @@ export async function refreshMarketPrice(
   productId: string,
 ): Promise<void> {
   await requireProduct(ctx, productId);
+  // Guardrails before the paid call: rate limit, then plan quota / kill switch.
+  await assertWithinRateLimit(ctx.businessId, MARKET_REFRESH_RATE_LIMIT);
+  await assertClaudeGuardrail(ctx, "market_pricing");
   await refreshMarketPriceForProduct(ctx.supabase, productId, { manual: true });
 }
