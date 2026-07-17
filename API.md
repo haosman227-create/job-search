@@ -59,6 +59,18 @@ before the paid work starts.
 |---|---|
 | `GET /api/v1/me` | Caller's user id + tenant (`{ userId, business: { id, name } }`) |
 | `GET /api/v1/usage` | Plan + this month's usage: `{ usage: { plan, subscriptionStatus, trialEndsAt, period, invoices: { used, limit, remaining }, marketRefreshes: {...} } }` |
+| `GET /api/v1/onboarding` | First-run checklist + trial status: `{ onboarding, trial }` |
+
+### Billing
+| Method & path | Purpose |
+|---|---|
+| `POST /api/v1/billing/checkout` | `{ planId: "starter"\|"growth"\|"pro" }` → `{ url }` Stripe Checkout session. `503` when billing isn't configured |
+| `POST /api/v1/billing/portal` | → `{ url }` Stripe Billing Portal; `409 invalid_state` before a subscription exists |
+| `POST /api/v1/billing/webhook` | Stripe → app. Signature-verified (raw body), idempotent by event id. Not tenant-authenticated; never call from a client |
+
+Stripe is the source of truth for paid status. Verified webhooks flip
+`business.plan_id` / `subscription_status`, which the Session 3 guardrail then
+enforces. Secrets and Price ids live only in the deploy env.
 
 ### Invoices
 | Method & path | Purpose |
