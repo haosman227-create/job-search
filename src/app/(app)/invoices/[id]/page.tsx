@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireBusinessContext } from "@/lib/data/business";
+import { getInvoice } from "@/lib/api/services/invoices";
+import { ApiError } from "@/lib/api/errors";
 import { formatCents } from "@/lib/domain";
-import { INVOICES_BUCKET } from "@/lib/invoices/upload";
-import type { InvoiceLineRow, InvoiceRow, VendorRow } from "@/lib/types";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { InvoiceStatusPoller } from "@/components/invoice-status-poller";
 import { InvoiceImagePane } from "@/components/review/invoice-image-pane";
 import { ReviewForm } from "@/components/review/review-form";
-import { confirmInvoiceAction } from "../actions";
 
 const REVIEWABLE = new Set(["needs_review", "partial"]);
 
@@ -18,38 +17,19 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { supabase } = await requireBusinessContext();
+  const ctx = await requireBusinessContext();
 
-  const { data } = await supabase
-    .from("invoice")
-    .select("*, vendor(name)")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (!data) {
-    notFound();
+  let detail;
+  try {
+    detail = await getInvoice(ctx, id);
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "not_found") {
+      notFound();
+    }
+    throw error;
   }
-  const invoice = data as InvoiceRow & { vendor: Pick<VendorRow, "name"> | null };
-
-  const fileUrls = await Promise.all(
-    invoice.file_paths.map(async (path) => {
-      const { data: signed } = await supabase.storage
-        .from(INVOICES_BUCKET)
-        .createSignedUrl(path, 3600);
-      return { path, url: signed?.signedUrl ?? null };
-    }),
-  );
-
+  const { invoice, lines, files } = detail;
   const reviewable = REVIEWABLE.has(invoice.status);
-  let lines: InvoiceLineRow[] = [];
-  if (reviewable) {
-    const { data: lineData } = await supabase
-      .from("invoice_line")
-      .select("*")
-      .eq("invoice_id", id)
-      .order("created_at", { ascending: true });
-    lines = (lineData ?? []) as InvoiceLineRow[];
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -78,7 +58,7 @@ export default async function InvoiceDetailPage({
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="lg:sticky lg:top-6 lg:self-start">
             <h2 className="mb-2 font-medium">Invoice image</h2>
-            <InvoiceImagePane files={fileUrls} />
+            <InvoiceImagePane files={files} />
           </div>
           <div>
             <h2 className="mb-2 font-medium">Review &amp; confirm</h2>
@@ -92,7 +72,6 @@ export default async function InvoiceDetailPage({
                 confidence: invoice.header_confidence ?? {},
               }}
               lines={lines}
-              confirmAction={confirmInvoiceAction}
             />
           </div>
         </div>
@@ -123,7 +102,7 @@ export default async function InvoiceDetailPage({
 
           <div className="flex flex-col gap-3">
             <h2 className="font-medium">Original file</h2>
-            <InvoiceImagePane files={fileUrls} />
+            <InvoiceImagePane files={files} />
           </div>
         </>
       )}

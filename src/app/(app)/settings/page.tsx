@@ -1,33 +1,18 @@
 import { requireBusinessContext } from "@/lib/data/business";
+import {
+  getBusinessProfile,
+  listDepartments,
+} from "@/lib/api/services/settings";
 import { DepartmentsEditor } from "@/components/settings/departments-editor";
 import { BusinessProfileForm } from "@/components/settings/business-profile-form";
 import { InviteForm } from "@/components/settings/invite-form";
 
-interface DepartmentRow {
-  id: string;
-  name: string;
-  target_markup: string | number;
-  display_order: number;
-}
-
 export default async function SettingsPage() {
-  const { supabase, businessId } = await requireBusinessContext();
-
-  const [{ data: business }, { data: departments }] = await Promise.all([
-    supabase.from("business").select("name").eq("id", businessId).maybeSingle(),
-    supabase
-      .from("department")
-      .select("id, name, target_markup, display_order")
-      .eq("business_id", businessId)
-      .order("display_order"),
+  const ctx = await requireBusinessContext();
+  const [business, departmentRows] = await Promise.all([
+    getBusinessProfile(ctx),
+    listDepartments(ctx),
   ]);
-
-  const departmentRows = ((departments ?? []) as DepartmentRow[]).map((d) => ({
-    id: d.id,
-    name: d.name,
-    targetMarkup: Number(d.target_markup),
-    displayOrder: d.display_order,
-  }));
 
   return (
     <div className="flex max-w-3xl flex-col gap-10">

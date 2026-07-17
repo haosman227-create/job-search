@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { inviteUser } from "@/app/(app)/settings/actions";
+import { apiJson, ApiClientError } from "@/lib/api/client";
 
 export function InviteForm() {
   const [email, setEmail] = useState("");
@@ -14,12 +14,15 @@ export function InviteForm() {
   function invite() {
     setMessage(null);
     startTransition(async () => {
-      const result = await inviteUser({ email: email.trim() });
-      if (result.ok) {
+      try {
+        await apiJson("/api/v1/invites", "POST", { email: email.trim() });
         setMessage({ ok: true, text: `Invite sent to ${email.trim()}.` });
         setEmail("");
-      } else {
-        setMessage({ ok: false, text: result.message });
+      } catch (e) {
+        setMessage({
+          ok: false,
+          text: e instanceof ApiClientError ? e.message : "Invite failed.",
+        });
       }
     });
   }

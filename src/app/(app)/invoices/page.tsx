@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireBusinessContext } from "@/lib/data/business";
+import { listInvoices } from "@/lib/api/services/invoices";
 import { formatCents } from "@/lib/domain";
-import type { InvoiceListItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import {
@@ -14,21 +14,8 @@ import {
 } from "@/components/ui/table";
 
 export default async function InvoicesPage() {
-  const { supabase } = await requireBusinessContext();
-
-  const { data } = await supabase
-    .from("invoice")
-    .select("*, vendor(name), invoice_line(count)")
-    .order("created_at", { ascending: false });
-
-  const invoices: InvoiceListItem[] = (data ?? []).map(
-    (row: Record<string, unknown>) =>
-      ({
-        ...row,
-        line_count:
-          (row.invoice_line as Array<{ count: number }> | null)?.[0]?.count ?? 0,
-      }) as InvoiceListItem,
-  );
+  const ctx = await requireBusinessContext();
+  const invoices = await listInvoices(ctx);
 
   return (
     <div className="flex flex-col gap-6">

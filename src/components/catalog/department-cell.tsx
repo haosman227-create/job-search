@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { setProductDepartment } from "@/app/(app)/actions";
+import { apiJson } from "@/lib/api/client";
 import type { CatalogRow } from "@/lib/catalog/row";
 
 /**
@@ -24,7 +24,9 @@ export function DepartmentCell({
   function change(departmentId: string | null) {
     if (departmentId === row.departmentId) return;
     startTransition(async () => {
-      await setProductDepartment({ productId: row.id, departmentId });
+      await apiJson(`/api/v1/products/${row.id}`, "PATCH", { departmentId }).catch(
+        () => {},
+      );
       router.refresh();
     });
   }

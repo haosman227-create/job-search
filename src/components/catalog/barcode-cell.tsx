@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { attachProductBarcode } from "@/app/(app)/actions";
+import { apiJson, ApiClientError } from "@/lib/api/client";
 import type { CatalogRow } from "@/lib/catalog/row";
 
 /**
@@ -44,13 +44,15 @@ export function BarcodeCell({ row }: { row: CatalogRow }) {
     }
     setError(null);
     startTransition(async () => {
-      const result = await attachProductBarcode({ productId: row.id, barcode });
-      if (result.outcome === "invalid") {
-        setError(result.message);
-        return;
+      try {
+        await apiJson(`/api/v1/products/${row.id}/barcode`, "POST", { barcode });
+        setEditing(false);
+        router.refresh();
+      } catch (e) {
+        setError(
+          e instanceof ApiClientError ? e.message : "Could not attach barcode.",
+        );
       }
-      setEditing(false);
-      router.refresh();
     });
   }
 
