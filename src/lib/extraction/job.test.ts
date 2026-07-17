@@ -22,8 +22,16 @@ function stubDeps(
     downloadFile: vi.fn(async () => ({ mediaType: "image/jpeg", base64: "aa" })),
     extract: vi.fn(async () => {
       if (result instanceof Error) throw result;
-      return result;
+      return {
+        result,
+        usage: {
+          model: MODEL,
+          inputTokens: 1200,
+          outputTokens: 300,
+        },
+      };
     }),
+    recordUsage: vi.fn(async () => {}),
     upsertVendor: vi.fn(async () => "vendor-1"),
     updateInvoice: vi.fn(async () => {}),
     createInvoice: vi.fn(async () => "inv-sibling"),
@@ -71,6 +79,46 @@ describe("runExtractionJob", () => {
         },
       }),
     );
+  });
+
+  it("meters the extraction call on the write path (one event per call)", async () => {
+    const deps = stubDeps({ invoices: [cleanInvoice()] });
+    await runExtractionJob(deps, INVOICE, MODEL);
+
+    expect(deps.recordUsage).toHaveBeenCalledTimes(1);
+    expect(deps.recordUsage).toHaveBeenCalledWith({
+      businessId: BIZ,
+      userId: "user-1",
+      usage: { model: MODEL, inputTokens: 1200, outputTokens: 300 },
+      invoiceId: INVOICE,
+      invoices: 1,
+      lineItems: 3,
+      storageBytes: 1, // "aa" base64 decodes to a single byte
+    });
+  });
+
+  it("counts every invoice and line across a multi-invoice file", async () => {
+    const deps = stubDeps(multiInvoiceResult());
+    await runExtractionJob(deps, INVOICE, MODEL);
+
+    const record = vi.mocked(deps.recordUsage).mock.calls[0][0];
+    expect(record.invoices).toBe(2);
+    expect(record.lineItems).toBeGreaterThan(1);
+    expect(record.invoiceId).toBe(INVOICE);
+  });
+
+  it("fails the invoice (and writes nothing) when metering fails", async () => {
+    const deps = stubDeps({ invoices: [cleanInvoice()] }, {
+      recordUsage: vi.fn(async () => {
+        throw new Error("usage RPC unavailable");
+      }),
+    });
+    const result = await runExtractionJob(deps, INVOICE, MODEL);
+
+    expect(result.ok).toBe(false);
+    expect(deps.markFailed).toHaveBeenCalledWith(INVOICE);
+    expect(deps.insertLines).not.toHaveBeenCalled();
+    expect(deps.updateInvoice).not.toHaveBeenCalled();
   });
 
   it("marks invoices with illegible lines as partial", async () => {

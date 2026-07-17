@@ -21,7 +21,7 @@ describe.skipIf(!enabled)("extractWithClaude (live)", () => {
       path.join(__dirname, "fixtures/sample-invoice.png"),
     ).toString("base64");
 
-    const result = await extractWithClaude([
+    const { result } = await extractWithClaude([
       { mediaType: "image/png", base64 },
     ]);
 

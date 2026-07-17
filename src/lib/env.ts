@@ -17,6 +17,9 @@ const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z
     .string()
     .min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
+  // Opt-in gate for the internal cost dashboard (SPEC-SAAS §9.2). Unset in
+  // production tenant environments; "1" only where operators view spend.
+  INTERNAL_METRICS_ENABLED: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

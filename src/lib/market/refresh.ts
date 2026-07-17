@@ -1,10 +1,12 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { recordUsage } from "@/lib/usage/record";
 import { shouldRefreshMarketPrice } from "./policy";
 import { estimateMarketPrice } from "./client";
 
 interface MarketProductRow {
   id: string;
+  business_id: string;
   name: string;
   barcode: string | null;
   market_price_cents: number | null;
@@ -32,7 +34,7 @@ export async function refreshMarketPriceForProduct(
   const { data } = await supabase
     .from("product")
     .select(
-      `id, name, barcode, market_price_cents, market_price_fetched_at,
+      `id, business_id, name, barcode, market_price_cents, market_price_fetched_at,
        current_cost_cents, previous_cost_cents, department:department_id(name)`,
     )
     .eq("id", productId)
@@ -55,10 +57,18 @@ export async function refreshMarketPriceForProduct(
       barcode: product.barcode,
       departmentName: departmentName(product),
     });
+    // Meter the call on the write path before caching the result — a
+    // market-pricing call is billable spend even when it returns null.
+    await recordUsage({
+      businessId: product.business_id,
+      userId: null,
+      operation: "market_pricing",
+      usage: estimate.usage,
+    });
     await supabase
       .from("product")
       .update({
-        market_price_cents: estimate,
+        market_price_cents: estimate.priceCents,
         market_price_fetched_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
