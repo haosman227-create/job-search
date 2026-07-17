@@ -11,7 +11,13 @@ export default async function SignupPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-lg font-medium">Create your business</h2>
+      <div className="flex flex-col gap-1">
+        <h2 className="text-lg font-medium">Start your free trial</h2>
+        <p className="text-sm text-muted-foreground">
+          Turn supplier invoices into a living product catalog with costs and
+          margins. 14 days free — no credit card required.
+        </p>
+      </div>
       {error ? (
         <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
@@ -49,7 +55,7 @@ export default async function SignupPage({
             className="rounded-md border bg-background px-3 py-2"
           />
         </label>
-        <Button type="submit">Sign up</Button>
+        <Button type="submit">Start free trial</Button>
       </form>
       <p className="text-sm text-muted-foreground">
         Already have an account?{" "}

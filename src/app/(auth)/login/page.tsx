@@ -46,7 +46,7 @@ export default async function LoginPage({
       <p className="text-sm text-muted-foreground">
         New here?{" "}
         <Link href="/signup" className="text-foreground underline">
-          Create your business
+          Start a free trial
         </Link>
       </p>
     </div>
