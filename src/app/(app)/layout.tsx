@@ -3,6 +3,7 @@ import { MainNav } from "@/components/main-nav";
 import { createClient } from "@/lib/supabase/server";
 import { signout } from "../(auth)/actions";
 import { Button } from "@/components/ui/button";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 
 export default async function AppLayout({
   children,
@@ -35,7 +36,8 @@ export default async function AppLayout({
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 py-8">
+        <InstallPrompt />
         {children}
       </main>
     </>
