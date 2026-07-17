@@ -14,6 +14,9 @@ export type ApiErrorCode =
   | "validation_failed"
   | "duplicate_invoice"
   | "invalid_state"
+  | "quota_exceeded"
+  | "rate_limited"
+  | "service_unavailable"
   | "internal_error";
 
 const STATUS: Record<ApiErrorCode, number> = {
@@ -23,6 +26,12 @@ const STATUS: Record<ApiErrorCode, number> = {
   validation_failed: 422,
   duplicate_invoice: 409,
   invalid_state: 409,
+  // Payment Required — the caller is over a plan cap; the client shows the
+  // upgrade path (SPEC-SAAS §7). details.reason distinguishes cap vs trial.
+  quota_exceeded: 402,
+  rate_limited: 429,
+  // Global kill switch is off (operator halted all Claude spend).
+  service_unavailable: 503,
   internal_error: 500,
 };
 

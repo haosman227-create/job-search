@@ -41,7 +41,16 @@ Every non-2xx response has this shape:
 | `duplicate_invoice` | 409 | Duplicate guard fired; `details.existingInvoiceId` set |
 | `invalid_state` | 409 | Operation not valid for the resource's current state |
 | `validation_failed` | 422 | Body/params failed validation |
+| `quota_exceeded` | 402 | Over a plan cap or trial ended; `details.reason` ∈ `invoice_quota`/`market_quota`/`trial_ended`/`subscription_inactive`, with `limit`/`used` on a cap. Client shows the upgrade path |
+| `rate_limited` | 429 | Too many requests this window; `details.retryAfterSeconds` set |
+| `service_unavailable` | 503 | Global kill switch off (all Claude spend paused); `details.reason: service_disabled` |
 | `internal_error` | 500 | Unexpected failure (details never leaked) |
+
+Spend guardrails (SPEC-SAAS §9.3) are enforced **before** any Claude call. On the
+Claude-calling endpoints (`POST /api/v1/invoices`, `POST /api/v1/products/:id/market-refresh`)
+the boundary checks, in order: per-tenant rate limit → global kill switch →
+subscription/trial state → the plan's monthly cap. Any of these returns a 402/429/503
+before the paid work starts.
 
 ## Endpoints
 
@@ -49,12 +58,13 @@ Every non-2xx response has this shape:
 | Method & path | Purpose |
 |---|---|
 | `GET /api/v1/me` | Caller's user id + tenant (`{ userId, business: { id, name } }`) |
+| `GET /api/v1/usage` | Plan + this month's usage: `{ usage: { plan, subscriptionStatus, trialEndsAt, period, invoices: { used, limit, remaining }, marketRefreshes: {...} } }` |
 
 ### Invoices
 | Method & path | Purpose |
 |---|---|
 | `GET /api/v1/invoices` | List invoices (vendor name, line count, status), newest first |
-| `POST /api/v1/invoices` | Upload one invoice — multipart, field `file` (photo/PDF ≤ 20 MB). `201 { invoiceId }`. Extraction runs in the background |
+| `POST /api/v1/invoices` | Upload one invoice — multipart, field `file` (photo/PDF ≤ 20 MB). `201 { invoiceId }`. Extraction runs in the background. Optional `Idempotency-Key` header replays the first result on retry. Spend-guarded (see error envelope) |
 | `GET /api/v1/invoices/:id` | Detail: invoice + lines (with per-field confidence) + signed file URLs |
 | `GET /api/v1/invoices/:id/status` | Poll target while extraction runs (`{ status }`) |
 | `POST /api/v1/invoices/:id/confirm` | Review submission (the confirm payload). `200` on merge; `409 duplicate_invoice` unless resent with `overrideDuplicate: true` |
@@ -69,7 +79,7 @@ URL and wins over any body value.
 | `GET /api/v1/catalog` | `{ rows, departments, vendors }` — computed rows (margin, effective price, badges) |
 | `PATCH /api/v1/products/:id` | `{ salePriceOverrideCents?: int\|null, departmentId?: uuid\|null }` — set/clear the manual price override and/or department (at least one key required) |
 | `POST /api/v1/products/:id/barcode` | `{ barcode }` — attach; merges into an existing barcoded twin (returns `attached` or `merged`) |
-| `POST /api/v1/products/:id/market-refresh` | Manual AI market-price refresh |
+| `POST /api/v1/products/:id/market-refresh` | Manual AI market-price refresh. Spend-guarded (rate limit + market-refresh quota) |
 
 ### Settings
 | Method & path | Purpose |
