@@ -10,7 +10,7 @@ import {
   inputToCents,
   inputToQuantity,
 } from "@/lib/catalog/money-input";
-import type { ConfirmResult } from "@/lib/catalog/confirm";
+import { apiJson, ApiClientError } from "@/lib/api/client";
 import type { ConfirmInvoicePayload } from "@/lib/catalog/confirm-schema";
 import type { InvoiceLineRow } from "@/lib/types";
 
@@ -62,7 +62,6 @@ export function ReviewForm({
   invoiceId,
   header,
   lines,
-  confirmAction,
 }: {
   invoiceId: string;
   header: {
@@ -73,7 +72,6 @@ export function ReviewForm({
     confidence: Record<string, number>;
   };
   lines: InvoiceLineRow[];
-  confirmAction: (payload: ConfirmInvoicePayload) => Promise<ConfirmResult>;
 }) {
   const router = useRouter();
   const [vendorName, setVendorName] = useState(header.vendor_name);
@@ -118,16 +116,23 @@ export function ReviewForm({
   function submit(overrideDuplicate: boolean) {
     setError(null);
     startTransition(async () => {
-      const result = await confirmAction(buildPayload(overrideDuplicate));
-      if (result.outcome === "confirmed") {
+      try {
+        await apiJson(
+          `/api/v1/invoices/${invoiceId}/confirm`,
+          "POST",
+          buildPayload(overrideDuplicate),
+        );
+        setDuplicateInvoiceId(null);
         router.refresh();
-        return;
+      } catch (e) {
+        if (e instanceof ApiClientError && e.code === "duplicate_invoice") {
+          setDuplicateInvoiceId(
+            (e.details?.existingInvoiceId as string) ?? "unknown",
+          );
+          return;
+        }
+        setError(e instanceof ApiClientError ? e.message : "Confirm failed.");
       }
-      if (result.outcome === "duplicate") {
-        setDuplicateInvoiceId(result.existingInvoiceId);
-        return;
-      }
-      setError(result.message);
     });
   }
 

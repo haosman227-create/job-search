@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/lib/domain";
 import { centsToInput, inputToCents } from "@/lib/catalog/money-input";
-import { setSalePriceOverride } from "@/app/(app)/actions";
+import { apiJson } from "@/lib/api/client";
 import type { CatalogRow } from "@/lib/catalog/row";
 
 /**
@@ -24,14 +24,18 @@ export function SalePriceCell({ row }: { row: CatalogRow }) {
     setEditing(false);
     if (cents == null || cents === row.salePriceCents) return;
     startTransition(async () => {
-      await setSalePriceOverride({ productId: row.id, overrideCents: cents });
+      await apiJson(`/api/v1/products/${row.id}`, "PATCH", {
+        salePriceOverrideCents: cents,
+      }).catch(() => {});
       router.refresh();
     });
   }
 
   function clearOverride() {
     startTransition(async () => {
-      await setSalePriceOverride({ productId: row.id, overrideCents: null });
+      await apiJson(`/api/v1/products/${row.id}`, "PATCH", {
+        salePriceOverrideCents: null,
+      }).catch(() => {});
       router.refresh();
     });
   }

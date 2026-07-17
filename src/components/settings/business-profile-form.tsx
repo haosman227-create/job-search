@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { updateBusinessProfile } from "@/app/(app)/settings/actions";
+import { apiJson, ApiClientError } from "@/lib/api/client";
 
 export function BusinessProfileForm({ name: initial }: { name: string }) {
   const router = useRouter();
@@ -14,11 +14,12 @@ export function BusinessProfileForm({ name: initial }: { name: string }) {
   function save() {
     setMessage(null);
     startTransition(async () => {
-      const result = await updateBusinessProfile({ name: name.trim() });
-      if (!result.ok) setMessage(result.message);
-      else {
+      try {
+        await apiJson("/api/v1/business", "PATCH", { name: name.trim() });
         setMessage("Saved.");
         router.refresh();
+      } catch (e) {
+        setMessage(e instanceof ApiClientError ? e.message : "Save failed.");
       }
     });
   }

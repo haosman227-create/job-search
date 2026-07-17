@@ -4,11 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { markupToPercent, percentToMarkup } from "@/lib/settings/markup";
-import {
-  createDepartment,
-  deleteDepartment,
-  updateDepartment,
-} from "@/app/(app)/settings/actions";
+import { apiJson, ApiClientError } from "@/lib/api/client";
 
 interface Department {
   id: string;
@@ -31,12 +27,17 @@ export function DepartmentsEditor({
   const [newName, setNewName] = useState("");
   const [newPercent, setNewPercent] = useState("30");
 
-  function run(fn: () => Promise<{ ok: boolean; message?: string }>) {
+  function run(fn: () => Promise<unknown>) {
     setError(null);
     startTransition(async () => {
-      const result = await fn();
-      if (!result.ok) setError(result.message ?? "Something went wrong.");
-      else router.refresh();
+      try {
+        await fn();
+        router.refresh();
+      } catch (e) {
+        setError(
+          e instanceof ApiClientError ? e.message : "Something went wrong.",
+        );
+      }
     });
   }
 
@@ -60,15 +61,16 @@ export function DepartmentsEditor({
                 disabled={isPending}
                 onSave={(name, markup, order) =>
                   run(() =>
-                    updateDepartment({
-                      id: dept.id,
+                    apiJson(`/api/v1/departments/${dept.id}`, "PATCH", {
                       name,
                       targetMarkup: markup,
                       displayOrder: order,
                     }),
                   )
                 }
-                onDelete={() => run(() => deleteDepartment({ id: dept.id }))}
+                onDelete={() =>
+                  run(() => apiJson(`/api/v1/departments/${dept.id}`, "DELETE"))
+                }
               />
             ))}
           </tbody>
@@ -105,7 +107,10 @@ export function DepartmentsEditor({
               return;
             }
             run(() =>
-              createDepartment({ name: newName.trim(), targetMarkup: markup }),
+              apiJson("/api/v1/departments", "POST", {
+                name: newName.trim(),
+                targetMarkup: markup,
+              }),
             );
             setNewName("");
             setNewPercent("30");

@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatCents } from "@/lib/domain";
-import { refreshMarketPrice } from "@/app/(app)/actions";
+import { apiJson } from "@/lib/api/client";
 import type { CatalogRow } from "@/lib/catalog/row";
 
 /**
@@ -16,7 +16,9 @@ export function MarketPriceCell({ row }: { row: CatalogRow }) {
 
   function refresh() {
     startTransition(async () => {
-      await refreshMarketPrice({ productId: row.id });
+      await apiJson(`/api/v1/products/${row.id}/market-refresh`, "POST").catch(
+        () => {},
+      );
       router.refresh();
     });
   }

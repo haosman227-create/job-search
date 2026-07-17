@@ -1,23 +1,39 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { uploadInvoice } from "../actions";
+import { apiFetch, ApiClientError } from "@/lib/api/client";
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,application/pdf";
 
 export function UploadForm() {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function submit(selected: File) {
     setFile(selected);
+    setError(null);
     const formData = new FormData();
     formData.set("file", selected);
-    startTransition(() => uploadInvoice(formData));
+    startTransition(async () => {
+      try {
+        const { invoiceId } = await apiFetch<{ invoiceId: string }>(
+          "/api/v1/invoices",
+          { method: "POST", body: formData },
+        );
+        router.push(`/invoices/${invoiceId}`);
+      } catch (e) {
+        setError(
+          e instanceof ApiClientError ? e.message : "Upload failed. Try again.",
+        );
+      }
+    });
   }
 
   return (
@@ -81,6 +97,12 @@ export function UploadForm() {
       />
 
       <CameraButton onCapture={submit} disabled={isPending} />
+
+      {error ? (
+        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

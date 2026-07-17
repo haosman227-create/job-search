@@ -23,7 +23,7 @@ export function InvoiceStatusPoller({
 
     const timer = setInterval(async () => {
       try {
-        const response = await fetch(`/api/invoices/${invoiceId}/status`);
+        const response = await fetch(`/api/v1/invoices/${invoiceId}/status`);
         if (!response.ok) return;
         const body: { status?: string } = await response.json();
         if (body.status && body.status !== "processing") {

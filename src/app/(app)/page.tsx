@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { loadCatalog } from "@/lib/data/catalog";
+import { requireBusinessContext } from "@/lib/data/business";
+import { getCatalog } from "@/lib/api/services/catalog";
 import { CatalogTable } from "@/components/catalog/catalog-table";
 import { Button } from "@/components/ui/button";
 
 export default async function CatalogPage() {
-  const { rows, departments, vendors } = await loadCatalog();
+  const ctx = await requireBusinessContext();
+  const { rows, departments, vendors } = await getCatalog(ctx);
 
   return (
     <div className="flex flex-col gap-6">
