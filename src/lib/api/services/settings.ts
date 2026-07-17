@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { recordAudit } from "@/lib/audit/record";
 import type { ApiContext } from "../context";
 import { ApiError } from "../errors";
 
@@ -67,6 +68,14 @@ export async function createDepartment(
         : error.message,
     );
   }
+  await recordAudit({
+    businessId: ctx.businessId,
+    actorUserId: ctx.userId,
+    action: "department.created",
+    entityType: "department",
+    entityId: data.id,
+    metadata: { name: input.name },
+  });
   return data;
 }
 
@@ -89,6 +98,14 @@ export async function updateDepartment(
   if (!data || data.length === 0) {
     throw new ApiError("not_found", "Department not found.");
   }
+  await recordAudit({
+    businessId: ctx.businessId,
+    actorUserId: ctx.userId,
+    action: "department.updated",
+    entityType: "department",
+    entityId: departmentId,
+    metadata: { name: input.name },
+  });
 }
 
 export async function deleteDepartment(
@@ -105,6 +122,13 @@ export async function deleteDepartment(
   if (!data || data.length === 0) {
     throw new ApiError("not_found", "Department not found.");
   }
+  await recordAudit({
+    businessId: ctx.businessId,
+    actorUserId: ctx.userId,
+    action: "department.deleted",
+    entityType: "department",
+    entityId: departmentId,
+  });
 }
 
 export async function getBusinessProfile(
@@ -130,6 +154,14 @@ export async function updateBusinessProfile(
     .update({ name: input.name })
     .eq("id", ctx.businessId);
   if (error) throw new ApiError("validation_failed", error.message);
+  await recordAudit({
+    businessId: ctx.businessId,
+    actorUserId: ctx.userId,
+    action: "business.profile_updated",
+    entityType: "business",
+    entityId: ctx.businessId,
+    metadata: { name: input.name },
+  });
 }
 
 /**
@@ -155,4 +187,15 @@ export async function inviteUser(
   if (membershipError && membershipError.code !== "23505") {
     throw new ApiError("internal_error", membershipError.message);
   }
+  await recordAudit(
+    {
+      businessId: ctx.businessId,
+      actorUserId: ctx.userId,
+      action: "member.invited",
+      entityType: "membership",
+      entityId: data.user.id,
+      metadata: { email },
+    },
+    admin,
+  );
 }

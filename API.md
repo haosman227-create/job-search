@@ -104,6 +104,17 @@ URL and wins over any body value.
 | `PATCH /api/v1/business` | `{ name }` |
 | `POST /api/v1/invites` | `{ email }` — email invite into the caller's tenant |
 
+## Observability & audit
+
+Every meaningful mutation (invoice confirm, price override, department CRUD,
+barcode attach, business profile, invite, billing changes) writes an
+append-only `audit_log` row — service-role only, tenant-readable, never
+mutated. Recording is best-effort (a failed audit write never fails the
+mutation) but surfaced via a structured JSON log. The operator audit-trail view
+lives at `/internal/audit` (env-gated by `INTERNAL_METRICS_ENABLED`), filterable
+by `?business=` and `?since=`. Unhandled API errors are logged as structured
+JSON with request context; clients still get only a generic `internal_error`.
+
 ## Conventions
 
 - Money is integer cents in every request and response. Markup is a decimal
