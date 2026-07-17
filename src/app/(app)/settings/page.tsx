@@ -3,15 +3,18 @@ import {
   getBusinessProfile,
   listDepartments,
 } from "@/lib/api/services/settings";
+import { getBillingView } from "@/lib/api/services/billing";
 import { DepartmentsEditor } from "@/components/settings/departments-editor";
 import { BusinessProfileForm } from "@/components/settings/business-profile-form";
 import { InviteForm } from "@/components/settings/invite-form";
+import { BillingSection } from "@/components/settings/billing-section";
 
 export default async function SettingsPage() {
   const ctx = await requireBusinessContext();
-  const [business, departmentRows] = await Promise.all([
+  const [business, departmentRows, billing] = await Promise.all([
     getBusinessProfile(ctx),
     listDepartments(ctx),
+    getBillingView(ctx),
   ]);
 
   return (
@@ -46,6 +49,17 @@ export default async function SettingsPage() {
           </p>
         </div>
         <InviteForm />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="font-medium">Plan &amp; billing</h2>
+          <p className="text-sm text-muted-foreground">
+            Your monthly invoice limit scales with your plan. Upgrade any time —
+            new limits apply immediately.
+          </p>
+        </div>
+        <BillingSection view={billing} />
       </section>
     </div>
   );
