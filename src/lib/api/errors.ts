@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { logger } from "@/lib/log/logger";
 
 /**
  * The one error envelope every /api/v1 endpoint speaks (SPEC-SAAS §3):
@@ -83,6 +84,7 @@ export function handleApiRoute<Args extends unknown[]>(
   handler: (...args: Args) => Promise<NextResponse>,
 ): (...args: Args) => Promise<NextResponse> {
   return async (...args: Args) => {
+    const request = args[0] instanceof Request ? args[0] : undefined;
     try {
       return await handler(...args);
     } catch (error) {
@@ -97,7 +99,13 @@ export function handleApiRoute<Args extends unknown[]>(
           ),
         );
       }
-      console.error("api v1 unhandled error", error);
+      // Structured error log with request context; the client only ever sees a
+      // generic message (internals never leak).
+      logger.error("api v1 unhandled error", {
+        method: request?.method,
+        path: request ? new URL(request.url).pathname : undefined,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return errorResponse(
         new ApiError("internal_error", "Something went wrong."),
       );

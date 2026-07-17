@@ -3,6 +3,7 @@ import { getServerEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { billingConfigured, planForPriceId } from "@/lib/billing/config";
 import { getStripe } from "@/lib/billing/stripe";
+import { recordAudit } from "@/lib/audit/record";
 import {
   processStripeEvent,
   type WebhookDeps,
@@ -64,6 +65,21 @@ function webhookDeps(): WebhookDeps {
           stripe_subscription_id: state.stripeSubscriptionId,
         })
         .eq("id", businessId);
+      // System-actor audit entry (Stripe-driven, no user in the loop).
+      await recordAudit(
+        {
+          businessId,
+          actorUserId: null,
+          action:
+            state.subscriptionStatus === "canceled"
+              ? "billing.subscription_canceled"
+              : "billing.plan_changed",
+          entityType: "subscription",
+          entityId: state.stripeSubscriptionId,
+          metadata: { planId: state.planId, status: state.subscriptionStatus },
+        },
+        admin,
+      );
     },
   };
 }

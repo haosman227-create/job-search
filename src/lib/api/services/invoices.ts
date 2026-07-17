@@ -10,6 +10,7 @@ import { confirmInvoice, type ConfirmResult } from "@/lib/catalog/confirm";
 import { confirmInvoiceSchema } from "@/lib/catalog/confirm-schema";
 import { createConfirmDeps } from "@/lib/catalog/supabase-deps";
 import { refreshMarketPricesForProducts } from "@/lib/market/refresh";
+import { recordAudit } from "@/lib/audit/record";
 import { assertClaudeGuardrail } from "@/lib/guardrails/enforce";
 import {
   assertWithinRateLimit,
@@ -185,13 +186,24 @@ export async function confirmInvoiceForTenant(
 
   const result = await confirmInvoice(createConfirmDeps(ctx.supabase), parsed);
 
-  if (result.outcome === "confirmed" && result.productIds.length > 0) {
-    const productIds = result.productIds;
-    after(() =>
-      refreshMarketPricesForProducts(ctx.supabase, productIds).catch((error) =>
-        console.error("market refresh after confirm failed", error),
-      ),
-    );
+  if (result.outcome === "confirmed") {
+    await recordAudit({
+      businessId: ctx.businessId,
+      actorUserId: ctx.userId,
+      action: "invoice.confirmed",
+      entityType: "invoice",
+      entityId: parsed.invoiceId,
+      metadata: { lineCount: parsed.lines.length },
+    });
+
+    if (result.productIds.length > 0) {
+      const productIds = result.productIds;
+      after(() =>
+        refreshMarketPricesForProducts(ctx.supabase, productIds).catch((error) =>
+          console.error("market refresh after confirm failed", error),
+        ),
+      );
+    }
   }
   return result;
 }

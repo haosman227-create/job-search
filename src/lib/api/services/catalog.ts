@@ -7,6 +7,7 @@ import {
 import { attachBarcode, type BarcodeAttachResult } from "@/lib/catalog/merge";
 import { createBarcodeAttachDeps } from "@/lib/catalog/merge-deps";
 import { refreshMarketPriceForProduct } from "@/lib/market/refresh";
+import { recordAudit } from "@/lib/audit/record";
 import { assertClaudeGuardrail } from "@/lib/guardrails/enforce";
 import {
   assertWithinRateLimit,
@@ -151,6 +152,17 @@ export async function setSalePriceOverride(
     .eq("business_id", ctx.businessId)
     .eq("id", productId);
   if (error) throw error;
+  await recordAudit({
+    businessId: ctx.businessId,
+    actorUserId: ctx.userId,
+    action:
+      overrideCents == null
+        ? "product.price_override_cleared"
+        : "product.price_override_set",
+    entityType: "product",
+    entityId: productId,
+    metadata: { overrideCents },
+  });
 }
 
 /** Manual department assignment (SPEC §5.1): clears the confidence badge. */
@@ -188,6 +200,14 @@ export async function setProductDepartment(
     .eq("business_id", ctx.businessId)
     .eq("id", productId);
   if (error) throw error;
+  await recordAudit({
+    businessId: ctx.businessId,
+    actorUserId: ctx.userId,
+    action: "product.department_changed",
+    entityType: "product",
+    entityId: productId,
+    metadata: { departmentId },
+  });
 }
 
 /** Attach a barcode; merges into an existing barcoded twin (SPEC §7.2). */
@@ -204,6 +224,14 @@ export async function attachProductBarcode(
   if (result.outcome === "invalid") {
     throw new ApiError("validation_failed", result.message);
   }
+  await recordAudit({
+    businessId: ctx.businessId,
+    actorUserId: ctx.userId,
+    action: "product.barcode_attached",
+    entityType: "product",
+    entityId: productId,
+    metadata: { barcode, outcome: result.outcome },
+  });
   return result;
 }
 
