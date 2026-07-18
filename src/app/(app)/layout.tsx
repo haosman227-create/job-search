@@ -20,9 +20,11 @@ export default async function AppLayout({
 
   return (
     <>
-      <header className="border-b">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-4">
-          <span className="font-semibold tracking-tight">Margin</span>
+      <header className="sticky top-0 z-20 px-4 pt-4">
+        <div className="glass mx-auto flex h-14 w-full max-w-6xl items-center gap-6 rounded-2xl px-5">
+          <span className="font-semibold tracking-tight">
+            Margin<span className="text-primary">.</span>
+          </span>
           <MainNav />
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden text-sm text-muted-foreground sm:inline">

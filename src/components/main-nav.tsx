@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/", label: "Catalog" },
+  { href: "/dashboard", label: "Today" },
+  { href: "/catalog", label: "Catalog" },
   { href: "/invoices", label: "Invoices" },
   { href: "/settings", label: "Settings" },
 ] as const;
@@ -16,16 +17,15 @@ export function MainNav() {
   return (
     <nav className="flex items-center gap-1 text-sm">
       {links.map(({ href, label }) => {
-        const active =
-          href === "/" ? pathname === "/" : pathname.startsWith(href);
+        const active = pathname.startsWith(href);
         return (
           <Link
             key={href}
             href={href}
             className={cn(
-              "rounded-md px-3 py-1.5 transition-colors hover:bg-accent hover:text-accent-foreground",
+              "rounded-full px-3.5 py-1.5 transition-colors hover:bg-accent hover:text-accent-foreground",
               active
-                ? "bg-accent font-medium text-accent-foreground"
+                ? "bg-primary/15 font-medium text-primary"
                 : "text-muted-foreground",
             )}
           >
