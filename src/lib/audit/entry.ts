@@ -18,6 +18,9 @@ export type AuditAction =
   | "member.invited"
   | "billing.plan_changed"
   | "billing.subscription_canceled"
+  | "recipe.created"
+  | "recipe.updated"
+  | "recipe.deleted"
   | "account.exported"
   | "account.deletion_requested"
   | "account.deletion_canceled"
@@ -78,6 +81,12 @@ export function describeAudit(
       return `Plan changed to ${str(metadata.planId) ?? "a new plan"}`;
     case "billing.subscription_canceled":
       return "Subscription canceled — reverted to the free plan";
+    case "recipe.created":
+      return `Created recipe ${name ?? ""}`.trim();
+    case "recipe.updated":
+      return `Updated recipe ${name ?? ""}`.trim();
+    case "recipe.deleted":
+      return `Deleted recipe ${name ?? ""}`.trim();
     case "account.exported":
       return "Exported all account data";
     case "account.deletion_requested":
