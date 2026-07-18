@@ -20,6 +20,9 @@ const serverEnvSchema = z.object({
   // Opt-in gate for the internal cost dashboard (SPEC-SAAS §9.2). Unset in
   // production tenant environments; "1" only where operators view spend.
   INTERNAL_METRICS_ENABLED: z.string().optional(),
+  // Comma-separated emails allowed into /internal/* when the flag is on.
+  // Empty/unset admits no one — the flag alone never grants access.
+  OPERATOR_EMAILS: z.string().optional(),
   // Stripe billing (SPEC-SAAS §9.5). All optional so local/CI builds run
   // without billing configured; the billing endpoints degrade to 503 until the
   // secret + webhook secret + plan price ids are present in the deploy env.

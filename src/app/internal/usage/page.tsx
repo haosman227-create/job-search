@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { formatMicroUsd } from "@/lib/usage/cost";
-import { internalMetricsEnabled, loadUsageSummary } from "@/lib/usage/internal";
+import { loadUsageSummary } from "@/lib/usage/internal";
+import { isOperatorRequest } from "@/lib/internal/operator";
 import {
   Table,
   TableBody,
@@ -14,8 +15,9 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function InternalUsagePage() {
-  // Unreachable unless an operator opted this deployment in.
-  if (!internalMetricsEnabled()) notFound();
+  // Cross-tenant view: requires the env flag AND an allowlisted operator —
+  // a signed-in customer must never reach this.
+  if (!(await isOperatorRequest())) notFound();
 
   const rows = await loadUsageSummary();
   const totalMicroUsd = rows.reduce((n, r) => n + r.totalCostMicroUsd, 0);
