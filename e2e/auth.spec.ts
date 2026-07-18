@@ -1,9 +1,25 @@
 import { expect, test } from "@playwright/test";
 
-test("unauthenticated visitors are redirected to login", async ({ page }) => {
+test("the landing page is public and sells the product", async ({ page }) => {
   await page.goto("/");
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole("heading", { name: /Your invoice becomes your food cost/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Start free — no card" }),
+  ).toBeVisible();
+});
+
+test("unauthenticated visitors are redirected to login from the app", async ({
+  page,
+}) => {
+  await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+
+  await page.goto("/catalog");
+  await expect(page).toHaveURL(/\/login$/);
 
   await page.goto("/invoices");
   await expect(page).toHaveURL(/\/login$/);

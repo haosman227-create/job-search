@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { isAuthPath, isPublicPath } from "./public-paths";
 
 describe("isPublicPath", () => {
-  it("treats auth, legal, and the offline fallback as public", () => {
+  it("treats the landing, auth, legal, and offline pages as public", () => {
     for (const p of [
+      "/",
       "/login",
       "/signup",
       "/legal/terms",
@@ -15,7 +16,13 @@ describe("isPublicPath", () => {
   });
 
   it("gates the app and API behind auth", () => {
-    for (const p of ["/", "/invoices", "/settings", "/api/v1/catalog"]) {
+    for (const p of [
+      "/dashboard",
+      "/catalog",
+      "/invoices",
+      "/settings",
+      "/api/v1/catalog",
+    ]) {
       expect(isPublicPath(p), p).toBe(false);
     }
   });

@@ -48,9 +48,10 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthPath(path)) {
+  // Signed-in users skip the marketing/auth surface and land in the app.
+  if (user && (isAuthPath(path) || path === "/")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/dashboard";
     url.search = "";
     return NextResponse.redirect(url);
   }
