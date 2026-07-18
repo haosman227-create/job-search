@@ -2,6 +2,17 @@
 
 Smart invoicing app: upload a supplier invoice photo/PDF → AI extracts line items → living product catalog with cost, market price, sale price, and margin. Original single-business requirements in **SPEC.md**.
 
+## Product direction V2 — MarginEdge competitor (CURRENT)
+
+**Read SPEC-V2.md first for any new work.** The product is now positioned as a
+2026 competitor to MarginEdge for restaurants/food businesses: instant AI
+invoice processing (vs their 24–48h), proactive price intelligence, recipe/menu
+costing, a mobile-first Expo app on the same `/api/v1`, and a "calm futurism"
+design language (numbers-first, near-wordless, Motion animations, dark base).
+The Sessions 1–8 engine (extraction, catalog, metering, quotas, billing,
+audit) is kept; SPEC-V2 governs everything new. Stack stays TypeScript-only
+(no Go/AWS split — see SPEC-V2 §4).
+
 ## Product direction — multi-tenant SaaS
 
 The product is converting from a single-business internal tool into a **multi-tenant B2B SaaS** sold to independent retailers, with a web dashboard and a later native mobile client that consumes the same API. **Read SPEC-SAAS.md before implementing any new work** — it describes the delta from today's system to the paid product and the order it's built in. SPEC.md/ACCEPTANCE.md still describe the app that exists; SPEC-SAAS.md governs everything new.
