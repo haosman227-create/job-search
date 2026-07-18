@@ -69,6 +69,12 @@ response without doing the work again.
 | `GET /api/v1/usage` | Plan + this month's usage: `{ usage: { plan, subscriptionStatus, trialEndsAt, period, invoices: { used, limit, remaining }, marketRefreshes: {...} } }` |
 | `GET /api/v1/onboarding` | First-run checklist + trial status: `{ onboarding, trial }` |
 
+### Price intelligence
+| Method & path | Purpose |
+|---|---|
+| `GET /api/v1/insights` | Ranked insights from confirmed invoice history: `{ insights: [{ kind: "price_spike"\|"price_drop"\|"margin_squeeze", severity, productId, productName, previousCostCents, currentCostCents, changePct, monthlyImpactCents, marginRatio, summary }] }` — moves under 5% are ignored; ranked by absolute monthly impact |
+| `GET /api/v1/insights/digest` | Ten-second weekly digest: `{ digest: { generatedAt, headline, lines } }` |
+
 ### Account & data rights
 | Method & path | Purpose |
 |---|---|
