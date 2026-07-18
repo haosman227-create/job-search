@@ -13,7 +13,8 @@ function deps(overrides: Partial<WebhookDeps> = {}): WebhookDeps {
     stripeSubscriptionId: null,
   };
   return {
-    claimEvent: vi.fn(async () => true),
+    claimEvent: vi.fn(async () => "fresh" as const),
+    markApplied: vi.fn(async () => {}),
     resolveBusinessByCustomer: vi.fn(async () => BIZ),
     planForPriceId: vi.fn(() => "starter"),
     loadBillingState: vi.fn(async () => state),
@@ -69,11 +70,48 @@ describe("processStripeEvent", () => {
     );
   });
 
-  it("skips a redelivered event without applying it twice", async () => {
-    const d = deps({ claimEvent: vi.fn(async () => false) });
+  it("skips a fully-applied redelivery without applying it twice", async () => {
+    const d = deps({ claimEvent: vi.fn(async () => "done" as const) });
     const outcome = await processStripeEvent(d, checkoutEvent());
     expect(outcome).toBe("duplicate");
     expect(d.saveBillingState).not.toHaveBeenCalled();
+    expect(d.markApplied).not.toHaveBeenCalled();
+  });
+
+  it("RESUMES an event whose earlier attempt died before applying", async () => {
+    // The lost-update bug: claim succeeded, apply crashed, redelivery must
+    // re-apply rather than treat the event as done.
+    const d = deps({ claimEvent: vi.fn(async () => "unapplied" as const) });
+    const outcome = await processStripeEvent(d, checkoutEvent());
+    expect(outcome).toBe("applied");
+    expect(d.saveBillingState).toHaveBeenCalledTimes(1);
+    expect(d.markApplied).toHaveBeenCalledWith("evt_checkout");
+  });
+
+  it("leaves the event unapplied when saving state fails, so Stripe retries it", async () => {
+    const d = deps({
+      saveBillingState: vi.fn(async () => {
+        throw new Error("db unavailable");
+      }),
+    });
+    await expect(processStripeEvent(d, checkoutEvent())).rejects.toThrow(
+      "db unavailable",
+    );
+    expect(d.markApplied).not.toHaveBeenCalled();
+  });
+
+  it("only marks applied after the state is saved", async () => {
+    const order: string[] = [];
+    const d = deps({
+      saveBillingState: vi.fn(async () => {
+        order.push("save");
+      }),
+      markApplied: vi.fn(async () => {
+        order.push("markApplied");
+      }),
+    });
+    await processStripeEvent(d, checkoutEvent());
+    expect(order).toEqual(["save", "markApplied"]);
   });
 
   it("resolves a subscription event's tenant by Stripe customer id", async () => {

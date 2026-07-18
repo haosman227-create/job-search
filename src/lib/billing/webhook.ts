@@ -96,9 +96,23 @@ export function normalizeStripeEvent(event: Stripe.Event): NormalizedEvent {
   };
 }
 
+export type ClaimOutcome =
+  /** First delivery of this event id. */
+  | "fresh"
+  /** Seen before but a previous attempt died before finishing — resume it. */
+  | "unapplied"
+  /** Seen before and fully applied — a true duplicate, skip. */
+  | "done";
+
 export interface WebhookDeps {
-  /** Records the event id; returns false if it was already processed. */
-  claimEvent(id: string, type: string, businessId: string | null): Promise<boolean>;
+  /** Record (or find) the event id and report how far it previously got. */
+  claimEvent(
+    id: string,
+    type: string,
+    businessId: string | null,
+  ): Promise<ClaimOutcome>;
+  /** Mark the event fully applied; only after this is a redelivery skipped. */
+  markApplied(id: string): Promise<void>;
   resolveBusinessByCustomer(customerId: string): Promise<string | null>;
   /** Maps a Stripe price id to our plan id (reads deploy config). */
   planForPriceId(priceId: string | null): string | null;
@@ -112,14 +126,23 @@ export type ProcessOutcome =
   | "no_tenant"
   | "applied";
 
+/**
+ * At-least-once processing: the event is claimed first (so we always have a
+ * record), applied, and only then marked done. A crash or DB failure between
+ * claim and markApplied leaves the row unapplied, so Stripe's retry RESUMES the
+ * work instead of skipping it — applyBillingEvent is a pure state overwrite, so
+ * re-applying the same event is safe.
+ */
 export async function processStripeEvent(
   deps: WebhookDeps,
   event: Stripe.Event,
 ): Promise<ProcessOutcome> {
   const normalized = normalizeStripeEvent(event);
   if (!normalized.billingEvent) {
-    // Unhandled event type — still record it so redeliveries are cheap.
-    await deps.claimEvent(normalized.id, normalized.type, null);
+    // Unhandled event type — record it so redeliveries are cheap.
+    const claim = await deps.claimEvent(normalized.id, normalized.type, null);
+    if (claim === "done") return "duplicate";
+    await deps.markApplied(normalized.id);
     return "ignored";
   }
 
@@ -129,14 +152,20 @@ export async function processStripeEvent(
       ? await deps.resolveBusinessByCustomer(normalized.customerId)
       : null);
 
-  // Claim before applying: a redelivery of an already-applied event is skipped.
-  const fresh = await deps.claimEvent(normalized.id, normalized.type, businessId);
-  if (!fresh) return "duplicate";
+  const claim = await deps.claimEvent(normalized.id, normalized.type, businessId);
+  if (claim === "done") return "duplicate";
 
-  if (!businessId) return "no_tenant";
+  if (!businessId) {
+    // Nothing to apply against; close the event out.
+    await deps.markApplied(normalized.id);
+    return "no_tenant";
+  }
 
   const current = await deps.loadBillingState(businessId);
-  if (!current) return "no_tenant";
+  if (!current) {
+    await deps.markApplied(normalized.id);
+    return "no_tenant";
+  }
 
   // Resolve the plan from the subscription's price id when the event didn't
   // carry it in metadata (subscription.updated/deleted).
@@ -148,5 +177,6 @@ export async function processStripeEvent(
   };
   const next = applyBillingEvent(current, billingEvent);
   await deps.saveBillingState(businessId, next);
+  await deps.markApplied(normalized.id);
   return "applied";
 }

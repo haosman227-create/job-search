@@ -1,6 +1,9 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { recordUsage } from "@/lib/usage/record";
+import { ApiError } from "@/lib/api/errors";
+import { assertGuardrail, createGuardrailDeps } from "@/lib/guardrails/enforce";
+import { logger } from "@/lib/log/logger";
 import { shouldRefreshMarketPrice } from "./policy";
 import { estimateMarketPrice } from "./client";
 
@@ -29,7 +32,11 @@ function departmentName(row: MarketProductRow): string | null {
 export async function refreshMarketPriceForProduct(
   supabase: SupabaseClient,
   productId: string,
-  options: { manual?: boolean } = {},
+  options: {
+    manual?: boolean;
+    /** Injectable for tests; defaults to the real spend guardrail. */
+    guard?: (businessId: string) => Promise<void>;
+  } = {},
 ): Promise<boolean> {
   const { data } = await supabase
     .from("product")
@@ -50,6 +57,20 @@ export async function refreshMarketPriceForProduct(
     manual: options.manual ?? false,
   });
   if (!due) return false;
+
+  // Spend guardrail at the CHOKEPOINT (SPEC-SAAS §9.3): every path that can
+  // reach the paid estimate call — manual refresh, the post-confirm batch, any
+  // future caller — is quota/kill-switch checked here, before the call. A
+  // denial throws (never swallowed by the best-effort catch below).
+  const guard =
+    options.guard ??
+    ((businessId: string) =>
+      assertGuardrail(
+        createGuardrailDeps(supabase),
+        businessId,
+        "market_pricing",
+      ));
+  await guard(product.business_id);
 
   try {
     const estimate = await estimateMarketPrice({
@@ -84,8 +105,23 @@ export async function refreshMarketPriceForProduct(
 export async function refreshMarketPricesForProducts(
   supabase: SupabaseClient,
   productIds: string[],
+  guard?: (businessId: string) => Promise<void>,
 ): Promise<void> {
   for (const id of productIds) {
-    await refreshMarketPriceForProduct(supabase, id);
+    try {
+      await refreshMarketPriceForProduct(supabase, id, { guard });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        // Quota/kill-switch denial: stop the batch — every remaining product
+        // would be denied too, so don't keep asking.
+        logger.warn("market refresh batch stopped by guardrail", {
+          productId: id,
+          code: error.code,
+          reason: error.details?.reason,
+        });
+        return;
+      }
+      throw error;
+    }
   }
 }

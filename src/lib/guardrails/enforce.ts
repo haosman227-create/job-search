@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ApiError } from "@/lib/api/errors";
 import type { ApiContext } from "@/lib/api/context";
@@ -94,11 +95,16 @@ export async function assertGuardrail(
   }
 }
 
-/** Builds guardrail deps from a request context (tenant reads) + service role. */
-export function createGuardrailDeps(ctx: ApiContext): GuardrailDeps {
+/**
+ * Builds guardrail deps from any Supabase client scoped to (or trusted for)
+ * the given tenant. Works with the caller's RLS client at the API boundary and
+ * the admin client inside background chokepoints; the kill switch always reads
+ * via service role.
+ */
+export function createGuardrailDeps(client: SupabaseClient): GuardrailDeps {
   return {
     async loadTenant(businessId) {
-      const { data } = await ctx.supabase
+      const { data } = await client
         .from("business")
         .select(
           "subscription_status, trial_ends_at, plan:plan_id(monthly_invoice_quota, market_refresh_quota)",
@@ -120,7 +126,7 @@ export function createGuardrailDeps(ctx: ApiContext): GuardrailDeps {
       };
     },
     async loadUsage(businessId, period) {
-      const { data } = await ctx.supabase
+      const { data } = await client
         .from("tenant_usage_period")
         .select("invoices_processed, market_refreshes")
         .eq("business_id", businessId)
@@ -151,5 +157,9 @@ export async function assertClaudeGuardrail(
   ctx: ApiContext,
   operation: GuardrailOperation,
 ): Promise<void> {
-  await assertGuardrail(createGuardrailDeps(ctx), ctx.businessId, operation);
+  await assertGuardrail(
+    createGuardrailDeps(ctx.supabase),
+    ctx.businessId,
+    operation,
+  );
 }

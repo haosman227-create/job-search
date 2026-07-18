@@ -60,7 +60,12 @@ export interface ExtractionUsageRecord {
 export interface ExtractionJobDeps {
   loadInvoice(invoiceId: string): Promise<InvoiceRecord | null>;
   downloadFile(path: string): Promise<ExtractionFile>;
-  extract(files: ExtractionFile[]): Promise<ExtractionCall>;
+  /**
+   * The paid Claude call. Receives the invoice so the binding can enforce the
+   * tenant's spend guardrail at this chokepoint — a denial throws and fails
+   * the invoice before any tokens are spent.
+   */
+  extract(files: ExtractionFile[], invoice: InvoiceRecord): Promise<ExtractionCall>;
   /**
    * Meter the extraction call. Called immediately after a successful extract,
    * before any invoice is written — no Claude call is left unmetered, and a
@@ -109,7 +114,7 @@ export async function runExtractionJob(
     const files = await Promise.all(
       invoice.file_paths.map((path) => deps.downloadFile(path)),
     );
-    const { result, usage } = await deps.extract(files);
+    const { result, usage } = await deps.extract(files, invoice);
 
     // Write-path metering: one usage event per Claude call, recorded before any
     // invoice row is written. A failure here throws into the catch below and

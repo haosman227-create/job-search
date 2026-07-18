@@ -22,13 +22,27 @@ function webhookDeps(): WebhookDeps {
     async claimEvent(id, type, businessId) {
       const { error } = await admin
         .from("stripe_event")
-        .insert({ id, type, business_id: businessId });
-      if (error) {
-        // Duplicate primary key = Stripe redelivery we've already handled.
-        if (error.code === "23505") return false;
+        .insert({ id, type, business_id: businessId, applied: false });
+      if (!error) return "fresh";
+      if (error.code !== "23505") {
         throw new Error(`stripe_event insert failed: ${error.message}`);
       }
-      return true;
+      // Redelivery: resume if the earlier attempt never finished applying.
+      const { data } = await admin
+        .from("stripe_event")
+        .select("applied")
+        .eq("id", id)
+        .maybeSingle();
+      return data?.applied ? "done" : "unapplied";
+    },
+    async markApplied(id) {
+      const { error } = await admin
+        .from("stripe_event")
+        .update({ applied: true })
+        .eq("id", id);
+      if (error) {
+        throw new Error(`stripe_event markApplied failed: ${error.message}`);
+      }
     },
     async resolveBusinessByCustomer(customerId) {
       const { data } = await admin

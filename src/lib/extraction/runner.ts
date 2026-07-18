@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { INVOICES_BUCKET } from "@/lib/invoices/upload";
 import { recordUsage } from "@/lib/usage/record";
+import { assertGuardrail, createGuardrailDeps } from "@/lib/guardrails/enforce";
 import { EXTRACTION_MODEL, extractWithClaude } from "./client";
 import {
   runExtractionJob,
@@ -47,7 +48,18 @@ export async function runExtractionForInvoice(
         base64: Buffer.from(await data.arrayBuffer()).toString("base64"),
       };
     },
-    extract: extractWithClaude,
+    async extract(files, invoice) {
+      // Chokepoint guardrail: the upload boundary already checked, but this
+      // runs in the background after the response — re-check right before the
+      // paid call so a cap reached (or kill switch flipped) in between still
+      // blocks the spend. A denial throws → the job marks the invoice failed.
+      await assertGuardrail(
+        createGuardrailDeps(supabase),
+        invoice.business_id,
+        "extraction",
+      );
+      return extractWithClaude(files);
+    },
     async recordUsage(record) {
       await recordUsage({
         businessId: record.businessId,
