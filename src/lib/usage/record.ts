@@ -23,6 +23,33 @@ export interface RecordUsageInput {
   storageBytes?: number;
 }
 
+/**
+ * Roll the tenant's period counters forward AFTER an invoice has actually
+ * persisted (P1 audit fix: quota is consumed on success, never for a failed
+ * write — the cost event was already recorded at call time).
+ */
+export interface RecordProcessedInput {
+  businessId: string;
+  invoices: number;
+  lineItems: number;
+  storageBytes: number;
+}
+
+export async function recordProcessed(
+  input: RecordProcessedInput,
+  client: SupabaseClient = createAdminClient(),
+): Promise<void> {
+  const { error } = await client.rpc("record_invoice_processed", {
+    p_business_id: input.businessId,
+    p_invoices: input.invoices,
+    p_line_items: input.lineItems,
+    p_storage_bytes: input.storageBytes,
+  });
+  if (error) {
+    throw new Error(`Failed to record processed invoice: ${error.message}`);
+  }
+}
+
 export async function recordUsage(
   input: RecordUsageInput,
   client: SupabaseClient = createAdminClient(),

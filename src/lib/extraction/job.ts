@@ -1,4 +1,5 @@
 import { normalizeVendorName } from "@/lib/domain";
+import { logger } from "@/lib/log/logger";
 import type { ClaudeUsage } from "@/lib/usage/cost";
 import type { ExtractedInvoice, ExtractionFile } from "./schema";
 import type { ExtractionCall } from "./client";
@@ -46,12 +47,22 @@ export interface LineInsert {
   illegible: boolean;
 }
 
-/** Write-path metering record for one extraction call (SPEC-SAAS §9.2). */
+/**
+ * Cost record for one extraction call (SPEC-SAAS §9.2): the Claude spend,
+ * recorded the moment the call returns — that money is gone whether or not
+ * the invoice later persists. Quota consumption is a separate, success-only
+ * fact (see ProcessedRecord).
+ */
 export interface ExtractionUsageRecord {
   businessId: string;
   userId: string | null;
   usage: ClaudeUsage;
   invoiceId: string;
+}
+
+/** Quota/counters record, applied only after the invoice rows persisted. */
+export interface ProcessedRecord {
+  businessId: string;
   invoices: number;
   lineItems: number;
   storageBytes: number;
@@ -67,11 +78,16 @@ export interface ExtractionJobDeps {
    */
   extract(files: ExtractionFile[], invoice: InvoiceRecord): Promise<ExtractionCall>;
   /**
-   * Meter the extraction call. Called immediately after a successful extract,
-   * before any invoice is written — no Claude call is left unmetered, and a
-   * metering failure fails the job rather than silently losing the event.
+   * Record the Claude spend. Called immediately after a successful extract,
+   * before any invoice is written — no call is left unmetered, and a metering
+   * failure fails the job rather than silently losing the event.
    */
   recordUsage(record: ExtractionUsageRecord): Promise<void>;
+  /**
+   * Bump the tenant's quota counters. Called only after every invoice row has
+   * persisted — a failed write must never consume the customer's cap.
+   */
+  recordProcessed(record: ProcessedRecord): Promise<void>;
   /** Find-or-create by normalized name within the business; returns vendor id. */
   upsertVendor(
     businessId: string,
@@ -116,7 +132,7 @@ export async function runExtractionJob(
     );
     const { result, usage } = await deps.extract(files, invoice);
 
-    // Write-path metering: one usage event per Claude call, recorded before any
+    // Cost metering: one usage event per Claude call, recorded before any
     // invoice row is written. A failure here throws into the catch below and
     // fails the invoice — an unmetered extraction never persists as success.
     await deps.recordUsage({
@@ -124,12 +140,6 @@ export async function runExtractionJob(
       userId: invoice.uploaded_by,
       usage,
       invoiceId: invoice.id,
-      invoices: result.invoices.length,
-      lineItems: result.invoices.reduce((n, inv) => n + inv.lines.length, 0),
-      storageBytes: files.reduce(
-        (n, f) => n + Buffer.byteLength(f.base64, "base64"),
-        0,
-      ),
     });
 
     const invoiceIds: string[] = [];
@@ -152,8 +162,37 @@ export async function runExtractionJob(
       );
       invoiceIds.push(targetId);
     }
+
+    // Quota consumption: only now that every row persisted does the tenant's
+    // cap move. A counter failure under-counts (customer-favorable) and must
+    // never fail an invoice that already exists — log it instead.
+    try {
+      await deps.recordProcessed({
+        businessId: invoice.business_id,
+        invoices: result.invoices.length,
+        lineItems: result.invoices.reduce((n, inv) => n + inv.lines.length, 0),
+        storageBytes: files.reduce(
+          (n, f) => n + Buffer.byteLength(f.base64, "base64"),
+          0,
+        ),
+      });
+    } catch (error) {
+      logger.error("quota counter update failed after successful extraction", {
+        invoiceId: invoice.id,
+        businessId: invoice.business_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     return { ok: true, invoiceIds };
-  } catch {
+  } catch (error) {
+    // Structured record of WHY the invoice failed — this catch used to swallow
+    // the cause entirely, which also hid unrecorded-spend incidents.
+    logger.error("extraction job failed", {
+      invoiceId: invoice.id,
+      businessId: invoice.business_id,
+      error: error instanceof Error ? error.message : String(error),
+    });
     await deps.markFailed(invoice.id).catch(() => {});
     return { ok: false, invoiceIds: [] };
   }

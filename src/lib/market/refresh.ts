@@ -95,8 +95,15 @@ export async function refreshMarketPriceForProduct(
       })
       .eq("id", productId);
     return true;
-  } catch {
-    // Leave the cached estimate as-is on any model/storage failure.
+  } catch (error) {
+    // Leave the cached estimate as-is on a model/storage failure — but never
+    // silently: if the estimate happened and metering failed, that spend would
+    // otherwise vanish without a trace.
+    logger.warn("market price refresh failed", {
+      productId,
+      businessId: product.business_id,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return false;
   }
 }

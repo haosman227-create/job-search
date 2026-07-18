@@ -171,6 +171,39 @@ describe("record_usage_event", () => {
   });
 });
 
+describe("record_invoice_processed (quota on success)", () => {
+  it("bumps the period counters without creating a usage event", async () => {
+    const before = await db.query(
+      "select invoices_processed, line_items_extracted from tenant_usage_period where business_id = $1 and period = $2",
+      [bizA, period],
+    );
+    const eventsBefore = await db.query(
+      "select count(*)::int as n from usage_events where business_id = $1",
+      [bizA],
+    );
+
+    await db.query("select record_invoice_processed($1, 2, 7, 512)", [bizA]);
+
+    const after = await db.query(
+      "select invoices_processed, line_items_extracted from tenant_usage_period where business_id = $1 and period = $2",
+      [bizA, period],
+    );
+    expect(after.rows[0].invoices_processed).toBe(
+      before.rows[0].invoices_processed + 2,
+    );
+    expect(after.rows[0].line_items_extracted).toBe(
+      before.rows[0].line_items_extracted + 7,
+    );
+
+    // Counters only — the cost event was already written at call time.
+    const eventsAfter = await db.query(
+      "select count(*)::int as n from usage_events where business_id = $1",
+      [bizA],
+    );
+    expect(eventsAfter.rows[0].n).toBe(eventsBefore.rows[0].n);
+  });
+});
+
 describe("append-only RLS", () => {
   it("lets a tenant read only its own usage events and counters", async () => {
     const events = await asUser(db, USER_A, () =>
