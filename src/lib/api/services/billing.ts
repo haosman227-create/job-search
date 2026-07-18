@@ -1,5 +1,6 @@
 import "server-only";
 import { ApiError } from "@/lib/api/errors";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { ApiContext } from "@/lib/api/context";
 import {
   billingConfigured,
@@ -84,7 +85,9 @@ async function ensureCustomer(ctx: ApiContext): Promise<string> {
     metadata: { business_id: ctx.businessId },
   });
 
-  await ctx.supabase
+  // Stripe linkage is a system fact: billing columns are locked against tenant
+  // clients (see lock_billing_columns migration), so this write is service-role.
+  await createAdminClient()
     .from("business")
     .update({ stripe_customer_id: customer.id })
     .eq("id", ctx.businessId);

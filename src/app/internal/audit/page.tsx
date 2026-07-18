@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { internalMetricsEnabled } from "@/lib/usage/internal";
+import { isOperatorRequest } from "@/lib/internal/operator";
 import { loadAuditTrail } from "@/lib/audit/internal";
 import {
   Table,
@@ -18,7 +18,8 @@ export default async function InternalAuditPage({
 }: {
   searchParams: Promise<{ business?: string; since?: string }>;
 }) {
-  if (!internalMetricsEnabled()) notFound();
+  // Cross-tenant view: env flag AND allowlisted operator required.
+  if (!(await isOperatorRequest())) notFound();
 
   const { business, since } = await searchParams;
   const entries = await loadAuditTrail({ businessId: business, since });
