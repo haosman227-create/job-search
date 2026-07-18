@@ -1,7 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { INVOICES_BUCKET } from "@/lib/invoices/upload";
-import { recordUsage } from "@/lib/usage/record";
+import { recordProcessed, recordUsage } from "@/lib/usage/record";
 import { assertGuardrail, createGuardrailDeps } from "@/lib/guardrails/enforce";
 import { EXTRACTION_MODEL, extractWithClaude } from "./client";
 import {
@@ -61,16 +61,20 @@ export async function runExtractionForInvoice(
       return extractWithClaude(files);
     },
     async recordUsage(record) {
+      // Cost only — quota counters move in recordProcessed, after the writes.
       await recordUsage({
         businessId: record.businessId,
         userId: record.userId,
         operation: "extraction",
         usage: record.usage,
         invoiceId: record.invoiceId,
-        invoices: record.invoices,
-        lineItems: record.lineItems,
-        storageBytes: record.storageBytes,
+        invoices: 0,
+        lineItems: 0,
+        storageBytes: 0,
       });
+    },
+    async recordProcessed(record) {
+      await recordProcessed(record);
     },
     async upsertVendor(businessId, name, normalizedName) {
       const { data, error } = await supabase

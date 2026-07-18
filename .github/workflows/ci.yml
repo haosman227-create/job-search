@@ -43,3 +43,19 @@ jobs:
       - run: npm run test:db
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+
+  # Runs the real app (dev server, dummy env) and drives it with a browser.
+  # This is the layer unit/db tests can't see: routing, middleware, rendered
+  # pages — the class of bug that once shipped the legal pages behind a login
+  # redirect through three green CI runs.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test

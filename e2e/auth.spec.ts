@@ -23,10 +23,10 @@ test("login and signup pages render and link to each other", async ({
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByLabel("Password")).toBeVisible();
 
-  await page.getByRole("link", { name: "Create your business" }).click();
+  await page.getByRole("link", { name: "Start a free trial" }).click();
   await expect(page).toHaveURL(/\/signup$/);
   await expect(
-    page.getByRole("heading", { name: "Create your business" }),
+    page.getByRole("heading", { name: "Start your free trial" }),
   ).toBeVisible();
   await expect(page.getByLabel("Business name")).toBeVisible();
 

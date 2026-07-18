@@ -1,7 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { runExtractionJob, type ExtractionJobDeps } from "./job";
 import { cleanInvoice, multiInvoiceResult, partialInvoice } from "./fixtures";
+import { setLogSink } from "@/lib/log/logger";
 import type { ExtractionResult } from "./schema";
+
+// The job logs structured errors on failure paths; keep test output clean.
+let restoreLog: () => void;
+beforeAll(() => {
+  restoreLog = setLogSink(() => {});
+});
+afterAll(() => restoreLog());
 
 const BIZ = "b1111111-1111-1111-1111-111111111111";
 const INVOICE = "inv-original";
@@ -32,6 +40,7 @@ function stubDeps(
       };
     }),
     recordUsage: vi.fn(async () => {}),
+    recordProcessed: vi.fn(async () => {}),
     upsertVendor: vi.fn(async () => "vendor-1"),
     updateInvoice: vi.fn(async () => {}),
     createInvoice: vi.fn(async () => "inv-sibling"),
@@ -81,7 +90,7 @@ describe("runExtractionJob", () => {
     );
   });
 
-  it("meters the extraction call on the write path (one event per call)", async () => {
+  it("records the Claude spend immediately, cost-only", async () => {
     const deps = stubDeps({ invoices: [cleanInvoice()] });
     await runExtractionJob(deps, INVOICE, MODEL);
 
@@ -91,6 +100,15 @@ describe("runExtractionJob", () => {
       userId: "user-1",
       usage: { model: MODEL, inputTokens: 1200, outputTokens: 300 },
       invoiceId: INVOICE,
+    });
+  });
+
+  it("consumes quota only after the invoice persists", async () => {
+    const deps = stubDeps({ invoices: [cleanInvoice()] });
+    await runExtractionJob(deps, INVOICE, MODEL);
+
+    expect(deps.recordProcessed).toHaveBeenCalledExactlyOnceWith({
+      businessId: BIZ,
       invoices: 1,
       lineItems: 3,
       storageBytes: 1, // "aa" base64 decodes to a single byte
@@ -101,13 +119,41 @@ describe("runExtractionJob", () => {
     const deps = stubDeps(multiInvoiceResult());
     await runExtractionJob(deps, INVOICE, MODEL);
 
-    const record = vi.mocked(deps.recordUsage).mock.calls[0][0];
+    const record = vi.mocked(deps.recordProcessed).mock.calls[0][0];
     expect(record.invoices).toBe(2);
     expect(record.lineItems).toBeGreaterThan(1);
-    expect(record.invoiceId).toBe(INVOICE);
   });
 
-  it("fails the invoice (and writes nothing) when metering fails", async () => {
+  it("never consumes quota for an invoice whose write failed", async () => {
+    // The audit bug: counters used to bump BEFORE the rows were written, so a
+    // failed insert charged the customer's cap for nothing.
+    const deps = stubDeps({ invoices: [cleanInvoice()] }, {
+      insertLines: vi.fn(async () => {
+        throw new Error("insert failed");
+      }),
+    });
+    const result = await runExtractionJob(deps, INVOICE, MODEL);
+
+    expect(result.ok).toBe(false);
+    // The spend still happened and was recorded…
+    expect(deps.recordUsage).toHaveBeenCalledTimes(1);
+    // …but the quota counter never moved.
+    expect(deps.recordProcessed).not.toHaveBeenCalled();
+    expect(deps.markFailed).toHaveBeenCalledWith(INVOICE);
+  });
+
+  it("keeps a persisted invoice successful even if the counter update fails", async () => {
+    const deps = stubDeps({ invoices: [cleanInvoice()] }, {
+      recordProcessed: vi.fn(async () => {
+        throw new Error("counter RPC unavailable");
+      }),
+    });
+    const result = await runExtractionJob(deps, INVOICE, MODEL);
+    expect(result.ok).toBe(true);
+    expect(deps.markFailed).not.toHaveBeenCalled();
+  });
+
+  it("fails the invoice (and writes nothing) when spend metering fails", async () => {
     const deps = stubDeps({ invoices: [cleanInvoice()] }, {
       recordUsage: vi.fn(async () => {
         throw new Error("usage RPC unavailable");

@@ -11,6 +11,7 @@ import { confirmInvoiceSchema } from "@/lib/catalog/confirm-schema";
 import { createConfirmDeps } from "@/lib/catalog/supabase-deps";
 import { refreshMarketPricesForProducts } from "@/lib/market/refresh";
 import { recordAudit } from "@/lib/audit/record";
+import { logger } from "@/lib/log/logger";
 import { assertClaudeGuardrail } from "@/lib/guardrails/enforce";
 import {
   assertWithinRateLimit,
@@ -158,7 +159,11 @@ export async function uploadInvoice(
   const invoiceId = result.invoiceId;
   after(() =>
     runExtractionForInvoice(invoiceId).catch((error) => {
-      console.error(`extraction failed for invoice ${invoiceId}`, error);
+      logger.error("background extraction crashed", {
+        invoiceId,
+        businessId: ctx.businessId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }),
   );
   return { invoiceId };
@@ -200,7 +205,11 @@ export async function confirmInvoiceForTenant(
       const productIds = result.productIds;
       after(() =>
         refreshMarketPricesForProducts(ctx.supabase, productIds).catch((error) =>
-          console.error("market refresh after confirm failed", error),
+          logger.error("market refresh after confirm crashed", {
+            invoiceId: parsed.invoiceId,
+            businessId: ctx.businessId,
+            error: error instanceof Error ? error.message : String(error),
+          }),
         ),
       );
     }

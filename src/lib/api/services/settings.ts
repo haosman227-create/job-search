@@ -184,8 +184,25 @@ export async function inviteUser(
   const { error: membershipError } = await admin
     .from("membership")
     .insert({ user_id: data.user.id, business_id: ctx.businessId });
-  if (membershipError && membershipError.code !== "23505") {
-    throw new ApiError("internal_error", membershipError.message);
+  if (membershipError) {
+    if (membershipError.code !== "23505") {
+      throw new ApiError("internal_error", membershipError.message);
+    }
+    // user_id is the membership PK (one workspace per user in v1). A conflict
+    // is fine if they're already in THIS workspace — but membership in another
+    // workspace used to be silently swallowed as "success" while the person
+    // was never actually added. Surface it instead.
+    const { data: existing } = await admin
+      .from("membership")
+      .select("business_id")
+      .eq("user_id", data.user.id)
+      .maybeSingle();
+    if (existing && existing.business_id !== ctx.businessId) {
+      throw new ApiError(
+        "invalid_state",
+        "That person already belongs to another workspace and can't be invited (one workspace per account in v1).",
+      );
+    }
   }
   await recordAudit(
     {
