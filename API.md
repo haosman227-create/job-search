@@ -121,6 +121,16 @@ URL and wins over any body value.
 | `PATCH /api/v1/business` | `{ name }` |
 | `POST /api/v1/invites` | `{ email }` — email invite into the caller's tenant |
 
+## Maintenance cron
+
+`GET|POST /api/cron/maintenance` (outside `/api/v1`; `Authorization: Bearer
+<CRON_SECRET>`, invoked daily by the platform cron per `vercel.json`) runs:
+tenant hard-delete after the 30-day grace period (storage files first, then the
+cascading row), the per-tenant image-retention sweep (images past the window are
+removed and `file_paths` cleared; extracted data stays), and TTL cleanup of
+`idempotency_key` (24h), `rate_limit_counter` (2h), and applied `stripe_event`
+rows (30d). Unset `CRON_SECRET` disables the route.
+
 ## Observability & audit
 
 Every meaningful mutation (invoice confirm, price override, department CRUD,

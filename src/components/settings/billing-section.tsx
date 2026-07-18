@@ -3,15 +3,14 @@
 import { useState } from "react";
 import { apiJson } from "@/lib/api/client";
 import { ApiClientError } from "@/lib/api/client";
+import { formatCents } from "@/lib/domain";
 import type { BillingView } from "@/lib/api/services/billing";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** Display-only cents → "$29" / "$29.50". */
+// One money formatter everywhere (integer cents in, string out — no floats).
 function formatPrice(cents: number): string {
-  if (cents === 0) return "Free";
-  const whole = cents / 100;
-  return `$${Number.isInteger(whole) ? whole : whole.toFixed(2)}`;
+  return cents === 0 ? "Free" : formatCents(cents);
 }
 
 const PAID = new Set(["starter", "growth", "pro"]);
