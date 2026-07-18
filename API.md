@@ -46,11 +46,19 @@ Every non-2xx response has this shape:
 | `service_unavailable` | 503 | Global kill switch off (all Claude spend paused); `details.reason: service_disabled` |
 | `internal_error` | 500 | Unexpected failure (details never leaked) |
 
-Spend guardrails (SPEC-SAAS §9.3) are enforced **before** any Claude call. On the
-Claude-calling endpoints (`POST /api/v1/invoices`, `POST /api/v1/products/:id/market-refresh`)
-the boundary checks, in order: per-tenant rate limit → global kill switch →
-subscription/trial state → the plan's monthly cap. Any of these returns a 402/429/503
-before the paid work starts.
+Spend guardrails (SPEC-SAAS §9.3) are enforced **before** any Claude call — at
+the boundary for fast errors (per-tenant rate limit → kill switch →
+subscription/trial → monthly cap, returning 402/429/503) and again **inside the
+two chokepoints that actually call Claude** (the extraction runner and the
+market-price refresher), so no path — including the background market refresh
+after a confirm — can reach a paid call unchecked. A denied background
+extraction marks the invoice `failed`; a denied background market batch stops
+quietly.
+
+`Idempotency-Key` semantics: a key whose request **failed** is released, so
+retrying with the same key re-runs the work; a key still in flight returns
+`409 invalid_state` (retry shortly); a completed key replays the stored
+response without doing the work again.
 
 ## Endpoints
 

@@ -76,6 +76,24 @@ describe("business Stripe linkage", () => {
 });
 
 describe("stripe_event idempotency", () => {
+  it("tracks apply progress: new events start unapplied", async () => {
+    await db.query(
+      "insert into stripe_event (id, type, business_id) values ('evt_0', 'checkout.session.completed', $1)",
+      [bizA],
+    );
+    const fresh = await db.query(
+      "select applied from stripe_event where id = 'evt_0'",
+    );
+    // Default false: a crash between claim and apply leaves the row resumable.
+    expect(fresh.rows[0].applied).toBe(false);
+
+    await db.query("update stripe_event set applied = true where id = 'evt_0'");
+    const done = await db.query(
+      "select applied from stripe_event where id = 'evt_0'",
+    );
+    expect(done.rows[0].applied).toBe(true);
+  });
+
   it("records an event once and rejects a redelivery of the same id", async () => {
     await db.query(
       "insert into stripe_event (id, type, business_id) values ('evt_1', 'checkout.session.completed', $1)",

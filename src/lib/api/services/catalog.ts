@@ -8,7 +8,6 @@ import { attachBarcode, type BarcodeAttachResult } from "@/lib/catalog/merge";
 import { createBarcodeAttachDeps } from "@/lib/catalog/merge-deps";
 import { refreshMarketPriceForProduct } from "@/lib/market/refresh";
 import { recordAudit } from "@/lib/audit/record";
-import { assertClaudeGuardrail } from "@/lib/guardrails/enforce";
 import {
   assertWithinRateLimit,
   MARKET_REFRESH_RATE_LIMIT,
@@ -241,8 +240,9 @@ export async function refreshMarketPrice(
   productId: string,
 ): Promise<void> {
   await requireProduct(ctx, productId);
-  // Guardrails before the paid call: rate limit, then plan quota / kill switch.
+  // Rate limit at the boundary; the quota/kill-switch guardrail is enforced
+  // inside refreshMarketPriceForProduct (the chokepoint), so no path to the
+  // paid call can bypass it.
   await assertWithinRateLimit(ctx.businessId, MARKET_REFRESH_RATE_LIMIT);
-  await assertClaudeGuardrail(ctx, "market_pricing");
   await refreshMarketPriceForProduct(ctx.supabase, productId, { manual: true });
 }
