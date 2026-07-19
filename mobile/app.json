@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Margin",
+    "slug": "margin",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b0e14",
+    "splash": {
+      "backgroundColor": "#0b0e14"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.margin.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Margin photographs supplier invoices so AI can read them."
+      }
+    },
+    "android": {
+      "package": "app.margin.mobile",
+      "permissions": ["CAMERA"]
+    },
+    "plugins": ["expo-image-picker"]
+  }
+}

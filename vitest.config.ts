@@ -11,7 +11,9 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["src/**/*.test.{ts,tsx}"],
+    // mobile/'s pure api-core is dependency-free TS, tested from here so the
+    // mobile package needs no test toolchain of its own.
+    include: ["src/**/*.test.{ts,tsx}", "mobile/src/**/*.test.ts"],
     // DB integration tests run separately via vitest.db.config.ts (test:db).
     exclude: ["src/test/db/**"],
     environment: "node",
