@@ -60,6 +60,11 @@ Deferred with reasons — revisit at real scale, funded by revenue:
 
 ## 5. Build order (one focused session per line, PR + green CI each)
 
+> **Status: V2-0 (#29), V2-1 (#30), V2-2 (#31), V2-3 (#32), V2-4 (#33), and
+> V2-5 are shipped.** Deferred, in order of value: AI menu import (photo →
+> draft recipes), secure mobile session persistence, EAS store submission
+> (owner accounts required).
+
 - **V2-1 — The face.** Design tokens + component pass (Motion), numbers-first
   dashboard (food cost %, spend, margin-at-risk, activity feed), rebuilt
   catalog/invoice/review screens under the design language, public landing
