@@ -70,8 +70,9 @@ Deferred with reasons — revisit at real scale, funded by revenue:
   menu prices"), weekly AI digest. Insights surface on dashboard + API.
 - **V2-3 — Recipes & menu.** Recipe = ingredients (catalog products) +
   quantities → live plate cost, margin per menu item, re-costed automatically
-  when an invoice changes an ingredient price. AI assist: paste/photograph a
-  menu, get draft recipes to confirm. MarginEdge parity feature, done simpler.
+  when an invoice changes an ingredient price. MarginEdge parity feature, done
+  simpler. (AI menu import — photograph a menu, get draft recipes — deferred
+  until after V2-5 to keep the session focused.)
 - **V2-4 — The phone.** Expo app consuming `/api/v1` (Bearer auth built in
   S1): camera-first capture, live extraction status, insights feed, food-cost
   glance. Preview via react-native-web screenshots; store submission requires
