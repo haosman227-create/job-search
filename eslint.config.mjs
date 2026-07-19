@@ -18,6 +18,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Separate Expo package with its own deps/toolchain (see mobile/README.md);
+    // its pure core is still unit-tested from the root vitest suite.
+    "mobile/**",
   ]),
 ]);
 
