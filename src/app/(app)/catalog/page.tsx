@@ -16,7 +16,7 @@ export default async function CatalogPage() {
       </div>
 
       {rows.length === 0 ? (
-        <div className="glass rounded-2xl p-10 text-center text-muted-foreground">
+        <div className="surface rounded-2xl p-10 text-center text-muted-foreground">
           Snap a supplier invoice and confirm it — your products, costs, and
           margins land here.
         </div>

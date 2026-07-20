@@ -21,7 +21,7 @@ export default async function RecipesPage() {
       </div>
 
       {recipes.length === 0 ? (
-        <div className="glass rounded-2xl p-10 text-center text-muted-foreground">
+        <div className="surface rounded-2xl p-10 text-center text-muted-foreground">
           Build a menu item from your catalog — its plate cost re-costs itself
           every time an invoice moves an ingredient price.
         </div>
@@ -34,7 +34,7 @@ export default async function RecipesPage() {
               <Link
                 key={recipe.id}
                 href={`/recipes/${recipe.id}`}
-                className="glass flex flex-col gap-3 rounded-2xl p-5 transition-colors hover:border-primary/40"
+                className="surface flex flex-col gap-3 rounded-2xl p-5 transition-colors hover:border-primary/40"
               >
                 <p className="font-medium">{recipe.name}</p>
                 <div className="flex items-end justify-between">
@@ -62,7 +62,7 @@ export default async function RecipesPage() {
                           ? "text-muted-foreground"
                           : squeezed
                             ? "text-destructive"
-                            : "glow text-primary",
+                            : "text-positive",
                       )}
                     >
                       {pct(recipe.cost.marginRatio)}

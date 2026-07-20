@@ -21,20 +21,22 @@ export function InsightsFeed({ insights }: { insights: Insight[] }) {
             <StaggerItem key={`${insight.kind}-${insight.productId}`}>
               <div
                 className={cn(
-                  "glass flex items-center gap-3 rounded-xl border-l-2 p-4",
+                  "surface flex items-center gap-3 rounded-xl border-l-2 p-4",
                   good
-                    ? "border-l-primary"
+                    ? "border-l-positive"
                     : insight.severity === "high"
                       ? "border-l-destructive"
-                      : "border-l-muted-foreground/50",
+                      : "border-l-primary",
                 )}
               >
                 <span
                   className={cn(
                     "tabular shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
                     good
-                      ? "bg-primary/15 text-primary"
-                      : "bg-destructive/15 text-destructive",
+                      ? "bg-positive/12 text-positive"
+                      : insight.severity === "high"
+                        ? "bg-destructive/12 text-destructive"
+                        : "bg-primary/12 text-primary",
                   )}
                 >
                   {insight.changePct > 0 ? "+" : ""}

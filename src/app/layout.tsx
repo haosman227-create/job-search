@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: "#faf6ef",
   // Comfortable on a phone in the stockroom; still zoomable for accessibility.
   width: "device-width",
   initialScale: 1,

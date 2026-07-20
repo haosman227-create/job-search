@@ -99,7 +99,7 @@ export function RecipeForm({
   }
 
   return (
-    <div className="glass flex max-w-2xl flex-col gap-5 rounded-2xl p-6">
+    <div className="surface flex max-w-2xl flex-col gap-5 rounded-2xl p-6">
       {error && (
         <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}

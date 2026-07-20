@@ -13,7 +13,7 @@ export default function AuthLayout({
           Invoices in, margins out.
         </p>
       </div>
-      <div className="glass w-full max-w-sm rounded-2xl p-6">{children}</div>
+      <div className="surface w-full max-w-sm rounded-2xl p-6">{children}</div>
     </div>
   );
 }
