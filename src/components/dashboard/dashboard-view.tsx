@@ -21,21 +21,25 @@ function pct(ratio: number | null): string {
 function Stat({
   label,
   children,
-  alert = false,
+  tone = "ink",
 }: {
   label: string;
   children: React.ReactNode;
-  alert?: boolean;
+  tone?: "ink" | "positive" | "alert";
 }) {
   return (
-    <StaggerItem className="glass rounded-2xl p-5">
+    <StaggerItem className="surface rounded-2xl p-5">
       <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
         {label}
       </p>
       <p
         className={cn(
           "mt-2 text-3xl font-semibold tracking-tight tabular sm:text-4xl",
-          alert ? "text-destructive" : "glow text-primary",
+          tone === "positive"
+            ? "text-positive"
+            : tone === "alert"
+              ? "text-primary"
+              : "text-foreground",
         )}
       >
         {children}
@@ -73,11 +77,19 @@ export function DashboardView({
         <Stat label="Spend this month">
           <CountUp value={stats.monthSpendCents} format={formatCents} />
         </Stat>
-        <Stat label="Avg margin">{pct(stats.avgMarginRatio)}</Stat>
-        <Stat label="Margin at risk" alert={stats.marginAtRiskCount > 0}>
+        <Stat label="Avg margin" tone="positive">
+          {pct(stats.avgMarginRatio)}
+        </Stat>
+        <Stat
+          label="Margin at risk"
+          tone={stats.marginAtRiskCount > 0 ? "alert" : "ink"}
+        >
           <CountUp value={stats.marginAtRiskCount} format={String} />
         </Stat>
-        <Stat label="Costs went up" alert={stats.costUpCount > 0}>
+        <Stat
+          label="Costs went up"
+          tone={stats.costUpCount > 0 ? "alert" : "ink"}
+        >
           <CountUp value={stats.costUpCount} format={String} />
         </Stat>
       </Stagger>
@@ -86,7 +98,7 @@ export function DashboardView({
         <FadeUp>
           <Link
             href="/invoices"
-            className="glass flex items-center justify-between rounded-2xl border-primary/30 p-4 transition-colors hover:border-primary/60"
+            className="surface flex items-center justify-between rounded-2xl border-primary/30 bg-primary/5 p-4 transition-colors hover:border-primary/60"
           >
             <span className="font-medium">
               {stats.awaitingReview} invoice
@@ -108,7 +120,7 @@ export function DashboardView({
           </Link>
         </div>
         {recentInvoices.length === 0 ? (
-          <div className="glass rounded-2xl p-8 text-center text-muted-foreground">
+          <div className="surface rounded-2xl p-8 text-center text-muted-foreground">
             Snap your first invoice — costs appear in seconds.
           </div>
         ) : (
@@ -117,7 +129,7 @@ export function DashboardView({
               <StaggerItem key={inv.id}>
                 <Link
                   href={`/invoices/${inv.id}`}
-                  className="glass flex items-center justify-between gap-3 rounded-xl p-4 transition-colors hover:border-primary/40"
+                  className="surface flex items-center justify-between gap-3 rounded-xl p-4 transition-colors hover:border-primary/40"
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium">

@@ -30,7 +30,7 @@ export default function App() {
   if (!authed) {
     return (
       <SafeAreaView style={styles.root}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <SignInScreen onSignedIn={() => setAuthed(true)} />
       </SafeAreaView>
     );
@@ -38,7 +38,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <View style={styles.header}>
         <Text style={styles.brand}>
           Margin<Text style={{ color: colors.accent }}>.</Text>

@@ -18,8 +18,8 @@ export function buildManifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#ffffff",
-    theme_color: "#0a0a0a",
+    background_color: "#faf6ef",
+    theme_color: "#faf6ef",
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       {

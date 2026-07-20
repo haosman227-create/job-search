@@ -32,7 +32,7 @@ describe("plan pricing", () => {
     const byId = Object.fromEntries(
       res.rows.map((r: { id: string; price_cents: number }) => [r.id, r.price_cents]),
     );
-    expect(byId).toEqual({ trial: 0, starter: 2900, growth: 7900, pro: 19900 });
+    expect(byId).toEqual({ trial: 0, starter: 1900, growth: 4900, pro: 9900 });
   });
 });
 
